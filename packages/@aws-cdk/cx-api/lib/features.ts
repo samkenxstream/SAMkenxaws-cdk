@@ -225,6 +225,16 @@ export const EC2_UNIQUE_IMDSV2_LAUNCH_TEMPLATE_NAME = '@aws-cdk/aws-ec2:uniqueIm
 export const IAM_MINIMIZE_POLICIES = '@aws-cdk/aws-iam:minimizePolicies';
 
 /**
+ * Enable this feature flag to have CodePipeline generate a unique cross account key alias name using the stack name.
+ *
+ * Previously, when creating multiple pipelines with similar naming conventions and when crossAccountKeys is true,
+ * the KMS key alias name created for these pipelines may be the same due to how the uniqueId is generated.
+ *
+ * This new implementation creates a uniqueId for the alias name using the stack name instead of the stack ID.
+ */
+export const CODEPIPELINE_CROSS_ACCOUNT_KEY_ALIAS_NAMED_WITH_STACK_NAME = '@aws-cdk/aws-codepipeline:generateNameForDefaultBucketKeyAlias';
+
+/**
  * Flag values that should apply for new projects
  *
  * Add a flag in here (typically with the value `true`), to enable
@@ -250,6 +260,7 @@ export const FUTURE_FLAGS: { [key: string]: boolean } = {
   [ECS_SERVICE_EXTENSIONS_ENABLE_DEFAULT_LOG_DRIVER]: true,
   [EC2_UNIQUE_IMDSV2_LAUNCH_TEMPLATE_NAME]: true,
   [IAM_MINIMIZE_POLICIES]: true,
+  [CODEPIPELINE_CROSS_ACCOUNT_KEY_ALIAS_NAMED_WITH_STACK_NAME]: true,
 };
 
 /**
