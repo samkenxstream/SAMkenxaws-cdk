@@ -1,5 +1,5 @@
-import * as cloudwatch from '@aws-cdk/aws-cloudwatch';
-import * as iot from '@aws-cdk/aws-iot';
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
+import * as iot from '@aws-cdk/aws-iot-alpha';
 import { CommonActionProps } from './common-action-props';
 import { singletonActionRole } from './private/role';
 
@@ -57,7 +57,10 @@ export class CloudWatchPutMetricAction implements iot.IAction {
   constructor(private readonly props: CloudWatchPutMetricActionProps) {
   }
 
-  bind(rule: iot.ITopicRule): iot.ActionConfig {
+  /**
+   * @internal
+   */
+  public _bind(rule: iot.ITopicRule): iot.ActionConfig {
     const role = this.props.role ?? singletonActionRole(rule);
     cloudwatch.Metric.grantPutMetricData(role);
 

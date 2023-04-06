@@ -1,5 +1,6 @@
-import { Template } from '@aws-cdk/assertions';
-import * as cdk from '@aws-cdk/core';
+import { Template } from 'aws-cdk-lib/assertions';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as cdk from 'aws-cdk-lib';
 import * as appreg from '../lib';
 
 describe('Attribute Group', () => {
@@ -76,6 +77,20 @@ describe('Attribute Group', () => {
       'arn:aws:servicecatalog:us-east-1:123456789012:/attribute-groups/0aqmvxvgmry0ecc4mjhwypun6i');
     expect(attributeGroup.attributeGroupId).toEqual('0aqmvxvgmry0ecc4mjhwypun6i');
   }),
+
+  test('Associate an application to an imported attribute group', () => {
+    const attributeGroup = appreg.AttributeGroup.fromAttributeGroupArn(stack, 'MyAttributeGroup',
+      'arn:aws:servicecatalog:us-east-1:123456789012:/attribute-groups/0aqmvxvgmry0ecc4mjhwypun6i');
+    const application = new appreg.Application(stack, 'MyApplication', {
+      applicationName: 'MyTestApplication',
+    });
+    attributeGroup.associateWith(application);
+    Template.fromStack(stack).hasResourceProperties('AWS::ServiceCatalogAppRegistry::AttributeGroupAssociation', {
+      Application: { 'Fn::GetAtt': ['MyApplication5C63EC1D', 'Id'] },
+      AttributeGroup: '0aqmvxvgmry0ecc4mjhwypun6i',
+    });
+
+  });
 
   test('fails for attribute group imported by ARN missing attributeGroupId', () => {
     expect(() => {
@@ -172,6 +187,145 @@ describe('Attribute Group', () => {
 
     Template.fromStack(stack).hasResourceProperties('AWS::ServiceCatalogAppRegistry::AttributeGroup', {
       Attributes: {},
+    });
+  });
+
+  describe('Associate application to an attribute group', () => {
+    let attributeGroup: appreg.AttributeGroup;
+
+    beforeEach(() => {
+      attributeGroup = new appreg.AttributeGroup(stack, 'MyAttributeGroupForAssociation', {
+        attributeGroupName: 'MyAttributeGroupForAssociation',
+        attributes: {},
+      });
+    });
+
+    test('Associate an application to an attribute group', () => {
+      const application = new appreg.Application(stack, 'MyApplication', {
+        applicationName: 'MyTestApplication',
+      });
+      attributeGroup.associateWith(application);
+      Template.fromStack(stack).hasResourceProperties('AWS::ServiceCatalogAppRegistry::AttributeGroupAssociation', {
+        Application: { 'Fn::GetAtt': ['MyApplication5C63EC1D', 'Id'] },
+        AttributeGroup: { 'Fn::GetAtt': ['MyAttributeGroupForAssociation6B3E1329', 'Id'] },
+      });
+
+    });
+
+  });
+
+  describe('Resource sharing of an attribute group', () => {
+    let attributeGroup: appreg.AttributeGroup;
+
+    beforeEach(() => {
+      attributeGroup = new appreg.AttributeGroup(stack, 'MyAttributeGroup', {
+        attributeGroupName: 'MyAttributeGroup',
+        attributes: {},
+      });
+    });
+
+    test('fails for sharing attribute group without principals', () => {
+      expect(() => {
+        attributeGroup.shareAttributeGroup('MyShareId', {
+          name: 'MyShare',
+        });
+      }).toThrow(/An entity must be provided for the share/);
+    });
+
+    test('share attribute group with an organization', () => {
+      attributeGroup.shareAttributeGroup('MyShareId', {
+        name: 'MyShare',
+        organizationArns: ['arn:aws:organizations::123456789012:organization/o-70oi5564q1'],
+      });
+
+      Template.fromStack(stack).hasResourceProperties('AWS::RAM::ResourceShare', {
+        AllowExternalPrincipals: false,
+        Name: 'MyShare',
+        Principals: ['arn:aws:organizations::123456789012:organization/o-70oi5564q1'],
+        ResourceArns: [{ 'Fn::GetAtt': ['MyAttributeGroup99099500', 'Arn'] }],
+        PermissionArns: ['arn:aws:ram::aws:permission/AWSRAMPermissionServiceCatalogAppRegistryAttributeGroupReadOnly'],
+      });
+    });
+
+    test('share attribute group with an account', () => {
+      attributeGroup.shareAttributeGroup('MyShareId', {
+        name: 'MyShare',
+        accounts: ['123456789012'],
+      });
+
+      Template.fromStack(stack).hasResourceProperties('AWS::RAM::ResourceShare', {
+        AllowExternalPrincipals: false,
+        Name: 'MyShare',
+        Principals: ['123456789012'],
+        ResourceArns: [{ 'Fn::GetAtt': ['MyAttributeGroup99099500', 'Arn'] }],
+        PermissionArns: ['arn:aws:ram::aws:permission/AWSRAMPermissionServiceCatalogAppRegistryAttributeGroupReadOnly'],
+      });
+    });
+
+    test('share attribute group with an IAM role', () => {
+      const myRole = iam.Role.fromRoleArn(stack, 'MyRole', 'arn:aws:iam::123456789012:role/myRole');
+
+      attributeGroup.shareAttributeGroup('MyShareId', {
+        name: 'MyShare',
+        roles: [myRole],
+      });
+
+      Template.fromStack(stack).hasResourceProperties('AWS::RAM::ResourceShare', {
+        AllowExternalPrincipals: false,
+        Name: 'MyShare',
+        Principals: ['arn:aws:iam::123456789012:role/myRole'],
+        ResourceArns: [{ 'Fn::GetAtt': ['MyAttributeGroup99099500', 'Arn'] }],
+        PermissionArns: ['arn:aws:ram::aws:permission/AWSRAMPermissionServiceCatalogAppRegistryAttributeGroupReadOnly'],
+      });
+    });
+
+    test('share attribute group with an IAM user', () => {
+      const myUser = iam.User.fromUserArn(stack, 'MyUser', 'arn:aws:iam::123456789012:user/myUser');
+
+      attributeGroup.shareAttributeGroup('MyShareId', {
+        name: 'MyShare',
+        users: [myUser],
+      });
+
+      Template.fromStack(stack).hasResourceProperties('AWS::RAM::ResourceShare', {
+        AllowExternalPrincipals: false,
+        Name: 'MyShare',
+        Principals: ['arn:aws:iam::123456789012:user/myUser'],
+        ResourceArns: [{ 'Fn::GetAtt': ['MyAttributeGroup99099500', 'Arn'] }],
+        PermissionArns: ['arn:aws:ram::aws:permission/AWSRAMPermissionServiceCatalogAppRegistryAttributeGroupReadOnly'],
+      });
+    });
+
+    test('share attribute group with organization, give explicit read only access to the attribute group', () => {
+      attributeGroup.shareAttributeGroup('MyShareId', {
+        name: 'MyShare',
+        organizationArns: ['arn:aws:organizations::123456789012:organization/o-70oi5564q1'],
+        sharePermission: appreg.SharePermission.READ_ONLY,
+      });
+
+      Template.fromStack(stack).hasResourceProperties('AWS::RAM::ResourceShare', {
+        AllowExternalPrincipals: false,
+        Name: 'MyShare',
+        Principals: ['arn:aws:organizations::123456789012:organization/o-70oi5564q1'],
+        ResourceArns: [{ 'Fn::GetAtt': ['MyAttributeGroup99099500', 'Arn'] }],
+        PermissionArns: ['arn:aws:ram::aws:permission/AWSRAMPermissionServiceCatalogAppRegistryAttributeGroupReadOnly'],
+      });
+    });
+
+    test('share attribute group with organization, give access to mutate attribute groups', () => {
+      attributeGroup.shareAttributeGroup('MyShareId', {
+        name: 'MyShare',
+        organizationArns: ['arn:aws:organizations::123456789012:organization/o-70oi5564q1'],
+        sharePermission: appreg.SharePermission.ALLOW_ACCESS,
+      });
+
+      Template.fromStack(stack).hasResourceProperties('AWS::RAM::ResourceShare', {
+        AllowExternalPrincipals: false,
+        Name: 'MyShare',
+        Principals: ['arn:aws:organizations::123456789012:organization/o-70oi5564q1'],
+        ResourceArns: [{ 'Fn::GetAtt': ['MyAttributeGroup99099500', 'Arn'] }],
+        PermissionArns: ['arn:aws:ram::aws:permission/AWSRAMPermissionServiceCatalogAppRegistryAttributeGroupAllowAssociation'],
+      });
     });
   });
 });

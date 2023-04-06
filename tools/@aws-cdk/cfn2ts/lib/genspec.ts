@@ -9,6 +9,7 @@ import * as util from './util';
 
 const RESOURCE_CLASS_PREFIX = 'Cfn';
 
+export const CONSTRUCTS_NAMESPACE = 'constructs';
 export const CORE_NAMESPACE = 'cdk';
 export const CFN_PARSE_NAMESPACE = 'cfn_parse';
 
@@ -211,7 +212,13 @@ export function attributeDefinition(attributeName: string, spec: schema.Attribut
     attrType = TOKEN_NAME.fqn;
   }
 
-  const constructorArguments = `this.getAtt('${attributeName}')`;
+  let typeHint = 'STRING';
+  if (attrType === 'number') {
+    typeHint = 'NUMBER';
+  } else if (attrType === 'string[]') {
+    typeHint = 'STRING_LIST';
+  }
+  const constructorArguments = `this.getAtt('${attributeName}', cdk.ResolutionTypeHint.${typeHint})`;
   return new Attribute(propertyName, attrType, constructorArguments);
 }
 

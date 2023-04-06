@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import * as iam from '@aws-cdk/aws-iam';
-import * as kms from '@aws-cdk/aws-kms';
-import * as s3 from '@aws-cdk/aws-s3';
-import * as cdk from '@aws-cdk/core';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as kms from 'aws-cdk-lib/aws-kms';
+import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as cdk from 'aws-cdk-lib';
 import * as glue from '../lib';
 
 const app = new cdk.App();
@@ -85,6 +85,14 @@ const encryptedTable = new glue.Table(stack, 'MyEncryptedTable', {
   dataFormat: glue.DataFormat.JSON,
   encryption: glue.TableEncryption.KMS,
   encryptionKey: new kms.Key(stack, 'MyKey'),
+});
+
+new glue.Table(stack, 'MyPartitionFilteredTable', {
+  database,
+  tableName: 'partition_filtered_table',
+  columns,
+  dataFormat: glue.DataFormat.JSON,
+  enablePartitionFiltering: true,
 });
 
 const user = new iam.User(stack, 'MyUser');

@@ -1,6 +1,6 @@
-import * as cloudwatch from '@aws-cdk/aws-cloudwatch';
-import * as iam from '@aws-cdk/aws-iam';
-import * as iot from '@aws-cdk/aws-iot';
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as iot from '@aws-cdk/aws-iot-alpha';
 import { CommonActionProps } from './common-action-props';
 import { singletonActionRole } from './private/role';
 
@@ -31,7 +31,10 @@ export class CloudWatchSetAlarmStateAction implements iot.IAction {
   ) {
   }
 
-  bind(topicRule: iot.ITopicRule): iot.ActionConfig {
+  /**
+   * @internal
+   */
+  public _bind(topicRule: iot.ITopicRule): iot.ActionConfig {
     const role = this.props.role ?? singletonActionRole(topicRule);
     role.addToPrincipalPolicy(new iam.PolicyStatement({
       actions: ['cloudwatch:SetAlarmState'],

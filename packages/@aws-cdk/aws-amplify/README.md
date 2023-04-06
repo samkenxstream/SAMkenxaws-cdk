@@ -3,12 +3,6 @@
 
 ---
 
-![cfn-resources: Stable](https://img.shields.io/badge/cfn--resources-stable-success.svg?style=for-the-badge)
-
-> All classes with the `Cfn` prefix in this module ([CFN Resources]) are always stable and safe to use.
->
-> [CFN Resources]: https://docs.aws.amazon.com/cdk/latest/guide/constructs.html#constructs_lib
-
 ![cdk-constructs: Experimental](https://img.shields.io/badge/cdk--constructs-experimental-important.svg?style=for-the-badge)
 
 > The APIs of higher level constructs in this module are experimental and under active development.
@@ -28,7 +22,7 @@ The AWS Amplify Console provides a Git-based workflow for deploying and hosting 
 To set up an Amplify Console app, define an `App`:
 
 ```ts
-import * as codebuild from '@aws-cdk/aws-codebuild';
+import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 
 const amplifyApp = new amplify.App(this, 'MyApp', {
   sourceCodeProvider: new amplify.GitHubSourceCodeProvider({
@@ -77,7 +71,7 @@ const amplifyApp = new amplify.App(this, 'MyApp', {
 To connect your `App` to CodeCommit, use the `CodeCommitSourceCodeProvider`:
 
 ```ts
-import * as codecommit from '@aws-cdk/aws-codecommit';
+import * as codecommit from 'aws-cdk-lib/aws-codecommit';
 
 const repository = new codecommit.Repository(this, 'Repo', {
   repositoryName: 'my-repo',
@@ -96,7 +90,7 @@ Add branches:
 ```ts
 declare const amplifyApp: amplify.App;
 
-const master = amplifyApp.addBranch('master'); // `id` will be used as repo branch name
+const main = amplifyApp.addBranch('main'); // `id` will be used as repo branch name
 const dev = amplifyApp.addBranch('dev', {
   performanceMode: true, // optional, enables performance mode
 });
@@ -132,15 +126,15 @@ Add a domain and map sub domains to branches:
 
 ```ts
 declare const amplifyApp: amplify.App;
-declare const master: amplify.Branch;
+declare const main: amplify.Branch;
 declare const dev: amplify.Branch;
 
 const domain = amplifyApp.addDomain('example.com', {
   enableAutoSubdomain: true, // in case subdomains should be auto registered for branches
   autoSubdomainCreationPatterns: ['*', 'pr*'], // regex for branches that should auto register subdomains
 });
-domain.mapRoot(master); // map master branch to domain root
-domain.mapSubDomain(master, 'www');
+domain.mapRoot(main); // map main branch to domain root
+domain.mapSubDomain(main, 'www');
 domain.mapSubDomain(dev); // sub domain prefix defaults to branch name
 ```
 
@@ -236,7 +230,7 @@ const amplifyApp = new amplify.App(this, 'App', {
 `sourceCodeProvider` is optional; when this is not specified the Amplify app can be deployed to using `.zip` packages. The `asset` property can be used to deploy S3 assets to Amplify as part of the CDK:
 
 ```ts
-import * as assets from '@aws-cdk/aws-s3-assets';
+import * as assets from 'aws-cdk-lib/aws-s3-assets';
 
 declare const asset: assets.Asset;
 declare const amplifyApp: amplify.App;

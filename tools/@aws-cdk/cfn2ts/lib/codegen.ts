@@ -4,10 +4,11 @@ import * as genspec from './genspec';
 import { itemTypeNames, PropertyAttributeName, scalarTypeNames, SpecName } from './spec-utils';
 import { upcaseFirst } from './util';
 
+const CONSTRUCTS = genspec.CONSTRUCTS_NAMESPACE;
 const CORE = genspec.CORE_NAMESPACE;
 const CFN_PARSE = genspec.CFN_PARSE_NAMESPACE;
 const RESOURCE_BASE_CLASS = `${CORE}.CfnResource`; // base class for all resources
-const CONSTRUCT_CLASS = `${CORE}.Construct`;
+const CONSTRUCT_CLASS = `${CONSTRUCTS}.Construct`;
 const TAG_TYPE = `${CORE}.TagType`;
 const TAG_MANAGER = `${CORE}.TagManager`;
 
@@ -32,6 +33,7 @@ export interface CodeGeneratorOptions {
  */
 export default class CodeGenerator {
   public readonly outputFile: string;
+  public readonly resources: Record<string, string> = {};
 
   private code = new CodeMaker();
 
@@ -57,6 +59,7 @@ export default class CodeGenerator {
     this.code.line();
     this.code.line('/* eslint-disable max-len */ // This is generated code - line lengths are difficult to control');
     this.code.line();
+    this.code.line(`import * as ${CONSTRUCTS} from 'constructs';`);
     this.code.line(`import * as ${CORE} from '${coreImport}';`);
     // import cfn-parse from an embedded folder inside @core, since it is not part of the public API of the module
     this.code.line(`import * as ${CFN_PARSE} from '${coreImport}/${coreImport === '.' ? '' : 'lib/'}helpers-internal';`);
@@ -70,6 +73,7 @@ export default class CodeGenerator {
       const resourceName = genspec.CodeName.forCfnResource(cfnName, this.affix);
       this.code.line();
 
+      this.resources[resourceName.specName!.fqn] = resourceName.className;
       this.emitResourceType(resourceName, resourceType);
       this.emitPropertyTypes(name, resourceName);
     }
@@ -382,7 +386,7 @@ export default class CodeGenerator {
    * Since resolve() deep-resolves, we only need to do this once.
    */
   private emitCloudFormationProperties(propsType: genspec.CodeName, propMap: Dictionary<string>, taggable: boolean): void {
-    this.code.openBlock('protected get cfnProperties(): { [key: string]: any } ');
+    this.code.openBlock('protected override get cfnProperties(): { [key: string]: any } ');
     this.code.indent('return {');
     for (const prop of Object.values(propMap)) {
       // handle tag rendering because of special cases
@@ -397,7 +401,7 @@ export default class CodeGenerator {
 
     this.code.line();
 
-    this.code.openBlock('protected renderProperties(props: {[key: string]: any}): { [key: string]: any } ');
+    this.code.openBlock('protected override renderProperties(props: {[key: string]: any}): { [key: string]: any } ');
     this.code.line(`return ${genspec.cfnMapperName(propsType).fqn}(props);`);
     this.code.closeBlock();
   }

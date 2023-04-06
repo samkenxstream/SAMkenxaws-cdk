@@ -35,8 +35,15 @@ export enum MetricsLevel {
 /**
  * Interface for building AWS::KinesisAnalyticsV2::Application PropertyGroup
  * configuration.
+ *
+ * @deprecated Use raw property bags instead (object literals, `Map<String,Object>`, etc... )
  */
 export interface PropertyGroups {
+  /**
+   * This index signature is not usable in non-TypeScript/JavaScript languages.
+   *
+   * @jsii ignore
+   */
   readonly [propertyId: string]: { [mapKey: string]: string };
 }
 
@@ -55,6 +62,9 @@ export class Runtime {
 
   /** Flink Version 1.13 */
   public static readonly FLINK_1_13 = Runtime.of('FLINK-1_13');
+
+  /** Flink Version 1.15 */
+  public static readonly FLINK_1_15 = Runtime.of('FLINK-1_15');
 
   /** Create a new Runtime with with an arbitrary Flink version string */
   public static of(value: string) {

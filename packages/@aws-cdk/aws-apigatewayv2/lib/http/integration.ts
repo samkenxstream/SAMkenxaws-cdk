@@ -1,15 +1,11 @@
-import { IRole } from '@aws-cdk/aws-iam';
-import { Resource } from '@aws-cdk/core';
+import { IRole } from 'aws-cdk-lib/aws-iam';
+import { Resource } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { CfnIntegration } from '../apigatewayv2.generated';
-import { IIntegration } from '../common';
-import { ParameterMapping } from '../parameter-mapping';
 import { IHttpApi } from './api';
 import { HttpMethod, IHttpRoute } from './route';
-
-// v2 - keep this import as a separate section to reduce merge conflict when forward merging with the v2 branch.
-// eslint-disable-next-line
-import { Construct as CoreConstruct } from '@aws-cdk/core';
+import { CfnIntegration } from 'aws-cdk-lib/aws-apigatewayv2';
+import { IIntegration } from '../common';
+import { ParameterMapping } from '../parameter-mapping';
 
 /**
  * Represents an Integration for an HTTP API.
@@ -291,7 +287,7 @@ export interface HttpRouteIntegrationBindOptions {
    * If the `HttpRouteIntegration` being bound creates additional constructs,
    * this will be used as their parent scope.
    */
-  readonly scope: CoreConstruct;
+  readonly scope: Construct;
 }
 
 /**

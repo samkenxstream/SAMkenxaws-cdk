@@ -1,7 +1,7 @@
 import * as path from 'path';
-import { Template } from '@aws-cdk/assertions';
-import { Bucket } from '@aws-cdk/aws-s3';
-import { Stack } from '@aws-cdk/core';
+import { Template } from 'aws-cdk-lib/assertions';
+import { Bucket } from 'aws-cdk-lib/aws-s3';
+import { Stack } from 'aws-cdk-lib';
 import { FirewallDomainList, FirewallDomains } from '../lib';
 
 let stack: Stack;
@@ -62,42 +62,7 @@ test('domain list from asset', () => {
   // THEN
   Template.fromStack(stack).hasResourceProperties('AWS::Route53Resolver::FirewallDomainList', {
     DomainFileUrl: {
-      'Fn::Join': [
-        '',
-        [
-          's3://',
-          {
-            Ref: 'AssetParameterse820b3f07bf66854be0dfd6f3ec357a10d644f2011069e5ad07d42f4f89ed35aS3BucketD6778673',
-          },
-          '/',
-          {
-            'Fn::Select': [
-              0,
-              {
-                'Fn::Split': [
-                  '||',
-                  {
-                    Ref: 'AssetParameterse820b3f07bf66854be0dfd6f3ec357a10d644f2011069e5ad07d42f4f89ed35aS3VersionKey1A69D23D',
-                  },
-                ],
-              },
-            ],
-          },
-          {
-            'Fn::Select': [
-              1,
-              {
-                'Fn::Split': [
-                  '||',
-                  {
-                    Ref: 'AssetParameterse820b3f07bf66854be0dfd6f3ec357a10d644f2011069e5ad07d42f4f89ed35aS3VersionKey1A69D23D',
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      ],
+      'Fn::Sub': 's3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/e820b3f07bf66854be0dfd6f3ec357a10d644f2011069e5ad07d42f4f89ed35a.txt',
     },
   });
 });

@@ -2,7 +2,6 @@
 // Kept in a separate file for sharing between the handler and the provider constructs.
 
 export const ASSERT_RESOURCE_TYPE = 'Custom::DeployAssert@AssertEquals';
-export const RESULTS_RESOURCE_TYPE = 'Custom::DeployAssert@ResultsCollection';
 export const SDK_RESOURCE_TYPE_PREFIX = 'Custom::DeployAssert@SdkCall';
 
 /**
@@ -43,6 +42,16 @@ export interface AwsApiCallRequest {
    * @default 'false'
    */
   readonly flattenResponse?: string;
+
+  /**
+   * Restrict the data returned by the API call to specific paths in
+   * the API response. Use this to limit the data returned by the custom
+   * resource if working with API calls that could potentially result in custom
+   * response objects exceeding the hard limit of 4096 bytes.
+   *
+   * @default - return all data
+   */
+  readonly outputPaths?: string[];
 }
 
 /**
@@ -112,7 +121,7 @@ export interface AssertionResult {
 /**
  * The result of an assertion
  */
-  readonly data: string;
+  readonly assertion: string;
 
   /**
    * Whether or not the assertion failed
@@ -154,25 +163,4 @@ export interface AssertionResultData {
    * @default - none
    */
   readonly message?: string;
-}
-
-/**
- * Represents a collection of assertion request results
- */
-export interface ResultsCollectionRequest {
-  /**
-   * The results of all the assertions that have been
-   * registered
-   */
-  readonly assertionResults: AssertionResultData[];
-}
-
-/**
- * The result of a results request
- */
-export interface ResultsCollectionResult {
-  /**
-   * A message containing the results of the assertion
-   */
-  readonly message: string;
 }

@@ -1,10 +1,13 @@
-import * as cdk from '@aws-cdk/core';
-import { InputValidator } from './private/validation';
-import { CfnAttributeGroup } from './servicecatalogappregistry.generated';
-
-// keep this import separate from other imports to reduce chance for merge conflicts with v2-main
-// eslint-disable-next-line no-duplicate-imports, import/order
+import { CfnResourceShare } from 'aws-cdk-lib/aws-ram';
+import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+import { IApplication } from './application';
+import { getPrincipalsforSharing, hashValues, ShareOptions, SharePermission } from './common';
+import { InputValidator } from './private/validation';
+import { CfnAttributeGroup, CfnAttributeGroupAssociation } from 'aws-cdk-lib/aws-servicecatalogappregistry';
+
+const ATTRIBUTE_GROUP_READ_ONLY_RAM_PERMISSION_ARN = 'arn:aws:ram::aws:permission/AWSRAMPermissionServiceCatalogAppRegistryAttributeGroupReadOnly';
+const ATTRIBUTE_GROUP_ALLOW_ACCESS_RAM_PERMISSION_ARN = 'arn:aws:ram::aws:permission/AWSRAMPermissionServiceCatalogAppRegistryAttributeGroupAllowAssociation';
 
 /**
  * A Service Catalog AppRegistry Attribute Group.
@@ -21,6 +24,20 @@ export interface IAttributeGroup extends cdk.IResource {
    * @attribute
    */
   readonly attributeGroupId: string;
+
+  /**
+   * Share the attribute group resource with other IAM entities, accounts, or OUs.
+   *
+   * @param id The construct name for the share.
+   * @param shareOptions The options for the share.
+   */
+  shareAttributeGroup(id: string, shareOptions: ShareOptions): void;
+
+  /**
+   * Associate an application with attribute group
+   * If the attribute group is already associated, it will ignore duplicate request.
+   */
+  associateWith(application: IApplication): void;
 }
 
 /**
@@ -48,6 +65,50 @@ export interface AttributeGroupProps {
 abstract class AttributeGroupBase extends cdk.Resource implements IAttributeGroup {
   public abstract readonly attributeGroupArn: string;
   public abstract readonly attributeGroupId: string;
+  private readonly associatedApplications: Set<string> = new Set();
+
+  public associateWith(application: IApplication): void {
+    if (!this.associatedApplications.has(application.node.addr)) {
+      const hashId = this.generateUniqueHash(application.node.addr);
+      new CfnAttributeGroupAssociation(this, `ApplicationAttributeGroupAssociation${hashId}`, {
+        application: application.stack === cdk.Stack.of(this) ? application.applicationId : application.applicationName ?? application.applicationId,
+        attributeGroup: this.attributeGroupId,
+      });
+
+      this.associatedApplications.add(application.node.addr);
+    }
+  }
+
+  public shareAttributeGroup(id: string, shareOptions: ShareOptions): void {
+    const principals = getPrincipalsforSharing(shareOptions);
+    new CfnResourceShare(this, id, {
+      name: shareOptions.name,
+      allowExternalPrincipals: false,
+      principals: principals,
+      resourceArns: [this.attributeGroupArn],
+      permissionArns: [this.getAttributeGroupSharePermissionARN(shareOptions)],
+    });
+  }
+
+  /**
+   * Get the correct permission ARN based on the SharePermission
+   */
+  protected getAttributeGroupSharePermissionARN(shareOptions: ShareOptions): string {
+    switch (shareOptions.sharePermission) {
+      case SharePermission.ALLOW_ACCESS:
+        return ATTRIBUTE_GROUP_ALLOW_ACCESS_RAM_PERMISSION_ARN;
+      case SharePermission.READ_ONLY:
+        return ATTRIBUTE_GROUP_READ_ONLY_RAM_PERMISSION_ARN;
+
+      default:
+        return shareOptions.sharePermission ?? ATTRIBUTE_GROUP_READ_ONLY_RAM_PERMISSION_ARN;
+    }
+  }
+
+  /**
+   * Create a unique hash
+   */
+  protected abstract generateUniqueHash(resourceAddress: string): string;
 }
 
 /**
@@ -72,6 +133,10 @@ export class AttributeGroup extends AttributeGroupBase implements IAttributeGrou
     class Import extends AttributeGroupBase {
       public readonly attributeGroupArn = attributeGroupArn;
       public readonly attributeGroupId = attributeGroupId!;
+
+      protected generateUniqueHash(resourceAddress: string): string {
+        return hashValues(this.attributeGroupArn, resourceAddress);
+      }
     }
 
     return new Import(scope, id, {
@@ -81,6 +146,7 @@ export class AttributeGroup extends AttributeGroupBase implements IAttributeGrou
 
   public readonly attributeGroupArn: string;
   public readonly attributeGroupId: string;
+  private readonly nodeAddress: string;
 
   constructor(scope: Construct, id: string, props: AttributeGroupProps) {
     super(scope, id);
@@ -95,6 +161,11 @@ export class AttributeGroup extends AttributeGroupBase implements IAttributeGrou
 
     this.attributeGroupArn = attributeGroup.attrArn;
     this.attributeGroupId = attributeGroup.attrId;
+    this.nodeAddress = cdk.Names.nodeUniqueId(attributeGroup.node);
+  }
+
+  protected generateUniqueHash(resourceAddress: string): string {
+    return hashValues(this.nodeAddress, resourceAddress);
   }
 
   private validateAttributeGroupProps(props: AttributeGroupProps) {

@@ -1,6 +1,6 @@
-import { WebSocketApi, WebSocketStage } from '@aws-cdk/aws-apigatewayv2';
-import * as lambda from '@aws-cdk/aws-lambda';
-import { App, CfnOutput, Stack } from '@aws-cdk/core';
+import { WebSocketApi, WebSocketStage } from '@aws-cdk/aws-apigatewayv2-alpha';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { App, CfnOutput, Stack } from 'aws-cdk-lib';
 import { WebSocketLambdaIntegration } from '../../lib';
 
 /*
@@ -15,25 +15,25 @@ const app = new App();
 const stack = new Stack(app, 'WebSocketApiInteg');
 
 const connectHandler = new lambda.Function(stack, 'ConnectHandler', {
-  runtime: lambda.Runtime.NODEJS_12_X,
+  runtime: lambda.Runtime.NODEJS_14_X,
   handler: 'index.handler',
   code: new lambda.InlineCode('exports.handler = async function(event, context) { console.log(event); return { statusCode: 200, body: "connected" }; };'),
 });
 
 const disconnetHandler = new lambda.Function(stack, 'DisconnectHandler', {
-  runtime: lambda.Runtime.NODEJS_12_X,
+  runtime: lambda.Runtime.NODEJS_14_X,
   handler: 'index.handler',
   code: new lambda.InlineCode('exports.handler = async function(event, context) { console.log(event); return { statusCode: 200, body: "disconnected" }; };'),
 });
 
 const defaultHandler = new lambda.Function(stack, 'DefaultHandler', {
-  runtime: lambda.Runtime.NODEJS_12_X,
+  runtime: lambda.Runtime.NODEJS_14_X,
   handler: 'index.handler',
   code: new lambda.InlineCode('exports.handler = async function(event, context) { console.log(event); return { statusCode: 200, body: "default" }; };'),
 });
 
 const messageHandler = new lambda.Function(stack, 'MessageHandler', {
-  runtime: lambda.Runtime.NODEJS_12_X,
+  runtime: lambda.Runtime.NODEJS_14_X,
   handler: 'index.handler',
   code: new lambda.InlineCode('exports.handler = async function(event, context) { console.log(event); return { statusCode: 200, body: "received" }; };'),
 });

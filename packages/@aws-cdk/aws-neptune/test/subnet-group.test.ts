@@ -1,6 +1,6 @@
-import { Template } from '@aws-cdk/assertions';
-import * as ec2 from '@aws-cdk/aws-ec2';
-import { Stack } from '@aws-cdk/core';
+import { Template } from 'aws-cdk-lib/assertions';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import { Stack } from 'aws-cdk-lib';
 import { SubnetGroup } from '../lib';
 
 let stack: Stack;
@@ -31,7 +31,7 @@ test('creates a subnet group from all properties', () => {
     description: 'My Shared Group',
     subnetGroupName: 'SharedGroup',
     vpc,
-    vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE },
+    vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
   });
 
   Template.fromStack(stack).hasResourceProperties('AWS::Neptune::DBSubnetGroup', {

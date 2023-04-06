@@ -1,5 +1,5 @@
-import * as iotevents from '@aws-cdk/aws-iotevents';
-import * as lambda from '@aws-cdk/aws-lambda';
+import * as iotevents from '@aws-cdk/aws-iotevents-alpha';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
 /**
@@ -12,7 +12,10 @@ export class LambdaInvokeAction implements iotevents.IAction {
   constructor(private readonly func: lambda.IFunction) {
   }
 
-  bind(_scope: Construct, options: iotevents.ActionBindOptions): iotevents.ActionConfig {
+  /**
+   * @internal
+   */
+  public _bind(_scope: Construct, options: iotevents.ActionBindOptions): iotevents.ActionConfig {
     this.func.grantInvoke(options.role);
     return {
       configuration: {

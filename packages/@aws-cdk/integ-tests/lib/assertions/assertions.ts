@@ -1,12 +1,8 @@
-import { CustomResource, CfnOutput } from '@aws-cdk/core';
+import { CustomResource, CfnOutput } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { ExpectedResult, ActualResult } from './common';
+import { md5hash } from './private/hash';
 import { AssertionRequest, AssertionsProvider, ASSERT_RESOURCE_TYPE } from './providers';
-
-// keep this import separate from other imports to reduce chance for merge conflicts with v2-main
-// eslint-disable-next-line no-duplicate-imports, import/order
-import { Construct as CoreConstruct } from '@aws-cdk/core';
-
 
 /**
  * Options for an EqualsAssertion
@@ -38,7 +34,7 @@ export interface EqualsAssertionProps {
  * Construct that creates a CustomResource to assert that two
  * values are equal
  */
-export class EqualsAssertion extends CoreConstruct {
+export class EqualsAssertion extends Construct {
   /**
    * The result of the assertion
    */
@@ -65,6 +61,6 @@ export class EqualsAssertion extends CoreConstruct {
 
     new CfnOutput(this, 'AssertionResults', {
       value: this.result,
-    }).overrideLogicalId(`AssertionResults${id}`);
+    }).overrideLogicalId(`AssertionResults${id}${md5hash({ actual: props.actual.result, expected: props.expected.result })}`);
   }
 }

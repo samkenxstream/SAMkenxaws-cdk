@@ -27,6 +27,13 @@ Command                               | Description
 [`cdk acknowledge`](#cdk-acknowledge) | Acknowledge (and hide) a notice by issue number
 [`cdk notices`](#cdk-notices)         | List all relevant notices for the application
 
+- [Bundling](#bundling)
+- [MFA Support](#mfa-support)
+- [SSO Support](#sso-support)
+- [Configuration](#configuration)
+  - [Running in CI](#running-in-ci)
+
+
 This module is part of the [AWS Cloud Development Kit](https://github.com/aws/aws-cdk) project.
 
 ## Commands
@@ -124,6 +131,14 @@ $ # Synthesize cloud assembly for StackName, but don't cloudFormation template o
 $ cdk synth MyStackName --quiet
 ```
 
+The `quiet` option can be set in the `cdk.json` file.
+
+```json
+{
+  "quiet": true
+}
+```
+
 See the [AWS Documentation](https://docs.aws.amazon.com/cdk/latest/guide/apps.html#apps_cloud_assembly) to learn more about cloud assemblies.
 See the [CDK reference documentation](https://docs.aws.amazon.com/cdk/api/latest/docs/cloud-assembly-schema-readme.html) for details on the cloud assembly specification
 
@@ -184,6 +199,8 @@ In order to deploy them, you can list the stacks you want to deploy. If your app
 
 If you want to deploy all of them, you can use the flag `--all` or the wildcard `*` to deploy all stacks in an app. Please note that, if you have a hierarchy of stacks as described above, `--all` and `*` will only match the stacks on the top level. If you want to match all the stacks in the hierarchy, use `**`. You can also combine these patterns. For example, if you want to deploy all stacks in the `Prod` stage, you can use `cdk deploy PipelineStack/Prod/**`.
 
+`--concurrency N` allows deploying multiple stacks in parallel while respecting inter-stack dependencies to speed up deployments. It does not protect against CloudFormation and other AWS account rate limiting.
+
 #### Parameters
 
 Pass parameters to your template during deployment by using `--parameters
@@ -229,7 +246,7 @@ Usage of output in a CDK stack
 const fn = new lambda.Function(this, "fn", {
   handler: "index.handler",
   code: lambda.Code.fromInline(`exports.handler = \${handler.toString()}`),
-  runtime: lambda.Runtime.NODEJS_12_X
+  runtime: lambda.Runtime.NODEJS_14_X
 });
 
 new cdk.CfnOutput(this, 'FunctionArn', {
@@ -279,7 +296,7 @@ are written to the same output file where each stack artifact ID is a key in the
 
 
 ```console
-$ cdk deploy '*' --outputs-file "/Users/code/myproject/outputs.json"
+$ cdk deploy '**' --outputs-file "/Users/code/myproject/outputs.json"
 ```
 
 Example `outputs.json` after deployment of multiple stacks
@@ -325,18 +342,37 @@ When `cdk deploy` is executed, deployment events will include the complete histo
 
 The `progress` key can also be specified as a user setting (`~/.cdk.json`)
 
-#### Externally Executable CloudFormation Change Sets
+#### CloudFormation Change Sets vs direct stack updates
 
-For more control over when stack changes are deployed, the CDK can generate a
-CloudFormation change set but not execute it. The default name of the generated
-change set is *cdk-deploy-change-set*, and a previous change set with that
-name will be overwritten. The change set will always be created, even if it
-is empty. A name can also be given to the change set to make it easier to later
-execute.
+By default, CDK creates a CloudFormation change set with the changes that will
+be deployed and then executes it. This behavior can be controlled with the
+`--method` parameter:
+
+- `--method=change-set` (default): create and execute the change set.
+- `--method=prepare-change-set`: create the change set but don't execute it.
+  This is useful if you have external tools that will inspect the change set or
+  you have an approval process for change sets.
+- `--method=direct`: do not create a change set but apply the change immediately.
+  This is typically a bit faster than creating a change set, but it loses
+  the progress information.
+
+To deploy faster without using change sets:
 
 ```console
-$ cdk deploy --no-execute --change-set-name MyChangeSetName
+$ cdk deploy --method=direct
 ```
+
+If a change set is created, it will be called *cdk-deploy-change-set*, and a
+previous change set with that name will be overwritten. The change set will
+always be created, even if it is empty. A name can also be given to the change
+set to make it easier to later execute:
+
+```console
+$ cdk deploy --method=prepare-change-set --change-set-name MyChangeSetName
+```
+
+For more control over when stack changes are deployed, the CDK can generate a
+CloudFormation change set but not execute it.
 
 #### Hotswap deployments for faster development
 
@@ -347,15 +383,20 @@ $ cdk deploy --hotswap [StackNames]
 ```
 
 This will attempt to perform a faster, short-circuit deployment if possible
-(for example, if you only changed the code of a Lambda function in your CDK app,
-but nothing else in your CDK code),
+(for example, if you changed the code of a Lambda function in your CDK app),
 skipping CloudFormation, and updating the affected resources directly;
 this includes changes to resources in nested stacks.
 If the tool detects that the change does not support hotswapping,
-it will fall back and perform a full CloudFormation deployment,
-exactly like `cdk deploy` does without the `--hotswap` flag.
+it will ignore it and display that ignored change.
+To have hotswap fall back and perform a full CloudFormation deployment,
+exactly like `cdk deploy` does without the `--hotswap` flag,
+specify `--hotswap-fallback`, like so:
 
-Passing this option to `cdk deploy` will make it use your current AWS credentials to perform the API calls -
+```console
+$ cdk deploy --hotswap-fallback [StackNames]
+```
+
+Passing either option to `cdk deploy` will make it use your current AWS credentials to perform the API calls -
 it will not assume the Roles from your bootstrap stack,
 even if the `@aws-cdk/core:newStyleStackSynthesis` feature flag is set to `true`
 (as those Roles do not have the necessary permissions to update AWS resources directly, without using CloudFormation).
@@ -366,7 +407,8 @@ and that you have the necessary IAM permissions to update the resources that are
 Hotswapping is currently supported for the following changes
 (additional changes will be supported in the future):
 
-- Code asset (including Docker image and inline code) and tag changes of AWS Lambda functions.
+- Code asset (including Docker image and inline code), tag changes, and configuration changes (only
+  description and environment variables are supported) of AWS Lambda functions.
 - AWS Lambda Versions and Aliases changes.
 - Definition changes of AWS Step Functions State Machines.
 - Container asset changes of AWS ECS Services.
@@ -380,6 +422,8 @@ For this reason, only use it for development purposes.
 
 **⚠ Note #2**: This command is considered experimental,
 and might have breaking changes in the future.
+
+**⚠ Note #3**: Expected defaults for certain parameters may be different with the hotswap parameter. For example, an ECS service's minimum healthy percentage will currently be set to 0. Please review the source accordingly if this occurs. 
 
 ### `cdk watch`
 
@@ -448,8 +492,18 @@ locally to your terminal. To disable this feature you can pass the `--no-logs` o
 $ cdk watch --no-logs
 ```
 
-**Note**: This command is considered experimental,
-and might have breaking changes in the future.
+You can increase the concurrency by which `watch` will deploy and hotswap
+your stacks by specifying `--concurrency N`. `--concurrency` for `watch`
+acts the same as `--concurrency` for `deploy`, in that it will deploy or
+hotswap your stacks while respecting inter-stack dependencies.
+
+```console
+$ cdk watch --concurrency 5
+```
+
+**Note**: This command is considered experimental, and might have breaking changes in the future.
+The same limitations apply to to `watch` deployments as do to `--hotswap` deployments. See the
+*Hotswap deployments for faster development* section for more information.
 
 ### `cdk import`
 
@@ -510,10 +564,10 @@ $ cdk destroy --app='node bin/main.js' MyStackName
 
 ### `cdk bootstrap`
 
-Deploys a `CDKToolkit` CloudFormation stack into the specified environment(s), that provides an S3 bucket 
-and ECR reposity that `cdk deploy` will use to store synthesized templates and the related assets, before 
-triggering a CloudFormation stack update. The name of the deployed stack can be configured using the 
-`--toolkit-stack-name` argument. The S3 Bucket Public Access Block Configuration can be configured using 
+Deploys a `CDKToolkit` CloudFormation stack into the specified environment(s), that provides an S3 bucket
+and ECR repository that `cdk deploy` will use to store synthesized templates and the related assets, before
+triggering a CloudFormation stack update. The name of the deployed stack can be configured using the
+`--toolkit-stack-name` argument. The S3 Bucket Public Access Block Configuration can be configured using
 the `--public-access-block-configuration` argument. ECR uses immutable tags for images.
 
 ```console
@@ -527,8 +581,9 @@ $ cdk bootstrap --app='node bin/main.js' foo bar
 By default, bootstrap stack will be protected from stack termination. This can be disabled using
 `--termination-protection` argument.
 
-If you have specific needs, policies, or requirements not met by the default template, you can customize it
-to fit your own situation, by exporting the default one to a file and either deploying it yourself
+If you have specific prerequisites not met by the example template, you can
+[customize it](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html#bootstrapping-customizing)
+to fit your requirements, by exporting the provided one to a file and either deploying it yourself
 using CloudFormation directly, or by telling the CLI to use a custom template. That looks as follows:
 
 ```console
@@ -540,6 +595,19 @@ $ cdk bootstrap --show-template > bootstrap-template.yaml
 # Tell CDK to use the customized template
 $ cdk bootstrap --template bootstrap-template.yaml
 ```
+
+Out of the box customization options are also available as arguments. To use a permissions boundary:
+
+- `--example-permissions-boundary` indicates the example permissions boundary, supplied by CDK
+- `--custom-permissions-boundary` specifies, by name a predefined, customer maintained, boundary
+
+A few notes to add at this point. The CDK supplied permissions boundary policy should be regarded as
+an example. Edit the content and reference the example policy if you're testing out the feature, turn
+it into a new policy for actual deployments (if one does not already exist). The concern here is drift
+as, most likely, a permissions boundary is maintained and has dedicated conventions, naming included.
+
+For more information on configuring permissions, including using permissions
+boundaries see the [Security And Safety Dev Guide](https://github.com/aws/aws-cdk/wiki/Security-And-Safety-Dev-Guide)
 
 ### `cdk doctor`
 
@@ -610,7 +678,7 @@ You can suppress warnings in a variety of ways:
   }
   ```
 
-- acknowleding individual notices via `cdk acknowledge` (see below).
+- acknowledging individual notices via `cdk acknowledge` (see below).
 
 ### `cdk acknowledge`
 
@@ -697,8 +765,11 @@ Some of the interesting keys that can be used in the JSON configuration files:
         "key": "value"
     },
     "toolkitStackName": "foo",        // Customize 'bootstrap' stack name  (--toolkit-stack-name=foo)
-    "toolkitBucketName": "fooBucket", // Customize 'bootstrap' bucket name (--toolkit-bucket-name=fooBucket)
-    "versionReporting": false,         // Opt-out of version reporting      (--no-version-reporting)
+    "toolkitBucket": {
+        "bucketName": "fooBucket",    // Customize 'bootstrap' bucket name (--toolkit-bucket-name=fooBucket)
+        "kmsKeyId": "fooKMSKey"       // Customize 'bootstrap' KMS key id  (--bootstrap-kms-key-id=fooKMSKey)
+    },
+    "versionReporting": false,        // Opt-out of version reporting      (--no-version-reporting)
 }
 ```
 
@@ -714,3 +785,9 @@ The following environment variables affect aws-cdk:
 
 - `CDK_DISABLE_VERSION_CHECK`: If set, disable automatic check for newer versions.
 - `CDK_NEW_BOOTSTRAP`: use the modern bootstrapping stack.
+
+### Running in CI
+
+The CLI will attempt to detect whether it is being run in CI by looking for the presence of an
+environment variable `CI=true`. This can be forced by passing the `--ci` flag. By default the CLI
+sends most of its logs to `stderr`, but when `ci=true` it will send the logs to `stdout` instead.

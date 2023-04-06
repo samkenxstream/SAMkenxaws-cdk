@@ -1,5 +1,5 @@
-import { IntegManifest, Manifest } from '@aws-cdk/cloud-assembly-schema';
-import { ISynthesisSession } from '@aws-cdk/core';
+import { IntegManifest, Manifest } from 'aws-cdk-lib/cloud-assembly-schema';
+import { ISynthesisSession } from 'aws-cdk-lib';
 import { IntegManifestWriter } from './manifest-writer';
 import { IntegTestCase } from './test-case';
 
@@ -9,12 +9,15 @@ const emptyManifest: IntegManifest = {
 };
 
 export class IntegManifestSynthesizer {
-  constructor(private readonly testCases: IntegTestCase[]) {}
+  constructor(private readonly testCases: IntegTestCase[], private readonly enableLookups?: boolean) {}
 
   synthesize(session: ISynthesisSession) {
-    const manifest = this.testCases
-      .map(tc => tc.manifest)
-      .reduce(mergeManifests, emptyManifest);
+    const manifest: IntegManifest = {
+      enableLookups: this.enableLookups,
+      ...this.testCases
+        .map(tc => tc.manifest)
+        .reduce(mergeManifests, emptyManifest),
+    };
 
     const snapshotDir = session.assembly.outdir;
 

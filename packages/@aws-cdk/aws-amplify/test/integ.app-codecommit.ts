@@ -1,5 +1,5 @@
-import * as codecommit from '@aws-cdk/aws-codecommit';
-import { App, Stack, StackProps } from '@aws-cdk/core';
+import * as codecommit from 'aws-cdk-lib/aws-codecommit';
+import { App, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as amplify from '../lib';
 
@@ -15,7 +15,7 @@ class TestStack extends Stack {
       sourceCodeProvider: new amplify.CodeCommitSourceCodeProvider({ repository }),
     });
 
-    amplifyApp.addBranch('master');
+    amplifyApp.addBranch('main');
   }
 }
 

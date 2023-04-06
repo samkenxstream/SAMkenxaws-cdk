@@ -1,7 +1,7 @@
-import { Match, Template } from '@aws-cdk/assertions';
-import { HttpApi, HttpRoute, HttpRouteKey, MappingValue, ParameterMapping, PayloadFormatVersion } from '@aws-cdk/aws-apigatewayv2';
-import { Code, Function, Runtime } from '@aws-cdk/aws-lambda';
-import { App, Stack } from '@aws-cdk/core';
+import { Match, Template } from 'aws-cdk-lib/assertions';
+import { HttpApi, HttpRoute, HttpRouteKey, MappingValue, ParameterMapping, PayloadFormatVersion } from '@aws-cdk/aws-apigatewayv2-alpha';
+import { Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { App, Stack } from 'aws-cdk-lib';
 import { HttpLambdaIntegration } from '../../lib';
 
 describe('LambdaProxyIntegration', () => {
@@ -111,7 +111,7 @@ describe('LambdaProxyIntegration', () => {
 function fooFunction(stack: Stack, id: string) {
   return new Function(stack, id, {
     code: Code.fromInline('foo'),
-    runtime: Runtime.NODEJS_12_X,
+    runtime: Runtime.NODEJS_14_X,
     handler: 'index.handler',
   });
 }

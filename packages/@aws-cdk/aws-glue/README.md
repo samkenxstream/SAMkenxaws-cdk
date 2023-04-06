@@ -3,12 +3,6 @@
 
 ---
 
-![cfn-resources: Stable](https://img.shields.io/badge/cfn--resources-stable-success.svg?style=for-the-badge)
-
-> All classes with the `Cfn` prefix in this module ([CFN Resources]) are always stable and safe to use.
->
-> [CFN Resources]: https://docs.aws.amazon.com/cdk/latest/guide/constructs.html#constructs_lib
-
 ![cdk-constructs: Experimental](https://img.shields.io/badge/cdk--constructs-experimental-important.svg?style=for-the-badge)
 
 > The APIs of higher level constructs in this module are experimental and under active development.
@@ -45,7 +39,7 @@ An ETL job processes data in batches using Apache Spark.
 declare const bucket: s3.Bucket;
 new glue.Job(this, 'ScalaSparkEtlJob', {
   executable: glue.JobExecutable.scalaEtl({
-    glueVersion: glue.GlueVersion.V2_0,
+    glueVersion: glue.GlueVersion.V4_0,
     script: glue.Code.fromBucket(bucket, 'src/com/example/HelloWorld.scala'),
     className: 'com.example.HelloWorld',
     extraJars: [glue.Code.fromBucket(bucket, 'jars/HelloWorld.jar')],
@@ -61,7 +55,7 @@ A Streaming job is similar to an ETL job, except that it performs ETL on data st
 ```ts
 new glue.Job(this, 'PythonSparkStreamingJob', {
   executable: glue.JobExecutable.pythonStreaming({
-    glueVersion: glue.GlueVersion.V2_0,
+    glueVersion: glue.GlueVersion.V4_0,
     pythonVersion: glue.PythonVersion.THREE,
     script: glue.Code.fromAsset(path.join(__dirname, 'job-script/hello_world.py')),
   }),
@@ -72,7 +66,11 @@ new glue.Job(this, 'PythonSparkStreamingJob', {
 ### Python Shell Jobs
 
 A Python shell job runs Python scripts as a shell and supports a Python version that depends on the AWS Glue version you are using.
-This can be used to schedule and run tasks that don't require an Apache Spark environment.
+This can be used to schedule and run tasks that don't require an Apache Spark environment. Currently, three flavors are supported:
+
+* PythonVersion.TWO (2.7; EOL)
+* PythonVersion.THREE (3.6)
+* PythonVersion.THREE_NINE (3.9)
 
 ```ts
 declare const bucket: s3.Bucket;
@@ -83,6 +81,23 @@ new glue.Job(this, 'PythonShellJob', {
     script: glue.Code.fromBucket(bucket, 'script.py'),
   }),
   description: 'an example Python Shell job',
+});
+```
+
+### Ray Jobs
+
+These jobs run in a Ray environment managed by AWS Glue.
+
+```ts
+new glue.Job(this, 'RayJob', {
+  executable: glue.JobExecutable.pythonRay({
+    glueVersion: glue.GlueVersion.V4_0,
+    pythonVersion: glue.PythonVersion.THREE_NINE,
+    script: glue.Code.fromAsset(path.join(__dirname, 'job-script/hello_world.py')),
+  }),
+  workerType: glue.WorkerType.Z_2X,
+  workerCount: 2,
+  description: 'an example Ray job'
 });
 ```
 
@@ -104,6 +119,24 @@ new glue.Connection(this, 'MyConnection', {
 });
 ```
 
+For RDS `Connection` by JDBC, it is recommended to manage credentials using AWS Secrets Manager. To use Secret, specify `SECRET_ID` in `properties` like the following code. Note that in this case, the subnet must have a route to the AWS Secrets Manager VPC endpoint or to the AWS Secrets Manager endpoint through a NAT gateway.
+
+```ts
+declare const securityGroup: ec2.SecurityGroup;
+declare const subnet: ec2.Subnet;
+declare const db: rds.DatabaseCluster;
+new glue.Connection(this, "RdsConnection", {
+  type: glue.ConnectionType.JDBC,
+  securityGroups: [securityGroup],
+  subnet,
+  properties: {
+    JDBC_CONNECTION_URL: `jdbc:mysql://${db.clusterEndpoint.socketAddress}/databasename`,
+    JDBC_ENFORCE_SSL: "false",
+    SECRET_ID: db.secret!.secretName,
+  },
+});
+```
+
 If you need to use a connection type that doesn't exist as a static member on `ConnectionType`, you can instantiate a `ConnectionType` object, e.g: `new glue.ConnectionType('NEW_TYPE')`.
 
 See [Adding a Connection to Your Data Store](https://docs.aws.amazon.com/glue/latest/dg/populate-add-connection.html) and [Connection Structure](https://docs.aws.amazon.com/glue/latest/dg/aws-glue-api-catalog-connections.html#aws-glue-api-catalog-connections-Connection) documentation for more information on the supported data stores and their configurations.
@@ -114,7 +147,6 @@ A `SecurityConfiguration` is a set of security properties that can be used by AW
 
 ```ts
 new glue.SecurityConfiguration(this, 'MySecurityConfiguration', {
-  securityConfigurationName: 'name',
   cloudWatchEncryption: {
     mode: glue.CloudWatchEncryptionMode.KMS,
   },
@@ -132,7 +164,6 @@ By default, a shared KMS key is created for use with the encryption configuratio
 ```ts
 declare const key: kms.Key;
 new glue.SecurityConfiguration(this, 'MySecurityConfiguration', {
-  securityConfigurationName: 'name',
   cloudWatchEncryption: {
     mode: glue.CloudWatchEncryptionMode.KMS,
     kmsKey: key,
@@ -147,9 +178,7 @@ See [documentation](https://docs.aws.amazon.com/glue/latest/dg/encryption-securi
 A `Database` is a logical grouping of `Tables` in the Glue Catalog.
 
 ```ts
-new glue.Database(this, 'MyDatabase', {
-  databaseName: 'my_database',
-});
+new glue.Database(this, 'MyDatabase');
 ```
 
 ## Table
@@ -160,7 +189,6 @@ A Glue table describes a table of data in S3: its structure (column names and ty
 declare const myDatabase: glue.Database;
 new glue.Table(this, 'MyTable', {
   database: myDatabase,
-  tableName: 'my_table',
   columns: [{
     name: 'col1',
     type: glue.Schema.STRING,
@@ -183,7 +211,6 @@ new glue.Table(this, 'MyTable', {
   s3Prefix: 'my-table/',
   // ...
   database: myDatabase,
-  tableName: 'my_table',
   columns: [{
     name: 'col1',
     type: glue.Schema.STRING,
@@ -202,7 +229,6 @@ To improve query performance, a table can specify `partitionKeys` on which data 
 declare const myDatabase: glue.Database;
 new glue.Table(this, 'MyTable', {
   database: myDatabase,
-  tableName: 'my_table',
   columns: [{
     name: 'col1',
     type: glue.Schema.STRING,
@@ -234,7 +260,6 @@ property:
 declare const myDatabase: glue.Database;
 new glue.Table(this, 'MyTable', {
   database: myDatabase,
-  tableName: 'my_table',
   columns: [{
     name: 'col1',
     type: glue.Schema.STRING,
@@ -264,6 +289,30 @@ myTable.addPartitionIndex({
 });
 ```
 
+### Partition Filtering
+
+If you have a table with a large number of partitions that grows over time, consider using AWS Glue partition indexing and filtering.
+
+```ts
+declare const myDatabase: glue.Database;
+new glue.Table(this, 'MyTable', {
+    database: myDatabase,
+    columns: [{
+        name: 'col1',
+        type: glue.Schema.STRING,
+    }],
+    partitionKeys: [{
+        name: 'year',
+        type: glue.Schema.SMALL_INT,
+    }, {
+        name: 'month',
+        type: glue.Schema.SMALL_INT,
+    }],
+    dataFormat: glue.DataFormat.JSON,
+    enablePartitionFiltering: true,
+});
+```
+
 ## [Encryption](https://docs.aws.amazon.com/athena/latest/ug/encryption.html)
 
 You can enable encryption on a Table's data:
@@ -277,7 +326,6 @@ new glue.Table(this, 'MyTable', {
   encryption: glue.TableEncryption.S3_MANAGED,
   // ...
   database: myDatabase,
-  tableName: 'my_table',
   columns: [{
     name: 'col1',
     type: glue.Schema.STRING,
@@ -295,7 +343,6 @@ new glue.Table(this, 'MyTable', {
   encryption: glue.TableEncryption.KMS,
   // ...
   database: myDatabase,
-  tableName: 'my_table',
   columns: [{
     name: 'col1',
     type: glue.Schema.STRING,
@@ -309,7 +356,6 @@ new glue.Table(this, 'MyTable', {
   encryptionKey: new kms.Key(this, 'MyKey'),
   // ...
   database: myDatabase,
-  tableName: 'my_table',
   columns: [{
     name: 'col1',
     type: glue.Schema.STRING,
@@ -326,7 +372,6 @@ new glue.Table(this, 'MyTable', {
   encryption: glue.TableEncryption.KMS_MANAGED,
   // ...
   database: myDatabase,
-  tableName: 'my_table',
   columns: [{
     name: 'col1',
     type: glue.Schema.STRING,
@@ -344,7 +389,6 @@ new glue.Table(this, 'MyTable', {
   encryption: glue.TableEncryption.CLIENT_SIDE_KMS, 
   // ...
   database: myDatabase,
-  tableName: 'my_table',
   columns: [{
     name: 'col1',
     type: glue.Schema.STRING,
@@ -358,7 +402,6 @@ new glue.Table(this, 'MyTable', {
   encryptionKey: new kms.Key(this, 'MyKey'),
   // ...
   database: myDatabase,
-  tableName: 'my_table',
   columns: [{
     name: 'col1',
     type: glue.Schema.STRING,
@@ -400,7 +443,6 @@ new glue.Table(this, 'MyTable', {
   }],
   // ...
   database: myDatabase,
-  tableName: 'my_table',
   dataFormat: glue.DataFormat.JSON,
 });  
 ```

@@ -1,7 +1,7 @@
-import { Template } from '@aws-cdk/assertions';
-import * as codebuild from '@aws-cdk/aws-codebuild';
-import * as codecommit from '@aws-cdk/aws-codecommit';
-import { SecretValue, Stack } from '@aws-cdk/core';
+import { Template } from 'aws-cdk-lib/assertions';
+import * as codebuild from 'aws-cdk-lib/aws-codebuild';
+import * as codecommit from 'aws-cdk-lib/aws-codecommit';
+import { SecretValue, Stack } from 'aws-cdk-lib';
 import * as amplify from '../lib';
 
 let stack: Stack;
@@ -417,11 +417,28 @@ test('with custom headers', () => {
           'custom-header-name-1': 'custom-header-value-2',
         },
       },
+      {
+        pattern: '/with-tokens/*',
+        headers: {
+          'x-custom': `${'hello'.repeat(10)}${Stack.of(stack).urlSuffix} `,
+        },
+      },
     ],
   });
 
   // THEN
   Template.fromStack(stack).hasResourceProperties('AWS::Amplify::App', {
-    CustomHeaders: 'customHeaders:\n  - pattern: "*.json"\n    headers:\n      - key: custom-header-name-1\n        value: custom-header-value-1\n      - key: custom-header-name-2\n        value: custom-header-value-2\n  - pattern: /path/*\n    headers:\n      - key: custom-header-name-1\n        value: custom-header-value-2\n',
+    CustomHeaders: {
+      'Fn::Join': [
+        '',
+        [
+          'customHeaders:\n  - pattern: "*.json"\n    headers:\n      - key: "custom-header-name-1"\n        value: "custom-header-value-1"\n      - key: "custom-header-name-2"\n        value: "custom-header-value-2"\n  - pattern: "/path/*"\n    headers:\n      - key: "custom-header-name-1"\n        value: "custom-header-value-2"\n  - pattern: "/with-tokens/*"\n    headers:\n      - key: "x-custom"\n        value: "hellohellohellohellohellohellohellohellohellohello',
+          {
+            Ref: 'AWS::URLSuffix',
+          },
+          ' "\n',
+        ],
+      ],
+    },
   });
 });

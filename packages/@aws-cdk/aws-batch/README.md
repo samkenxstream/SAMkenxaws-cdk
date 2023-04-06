@@ -3,12 +3,6 @@
 
 ---
 
-![cfn-resources: Stable](https://img.shields.io/badge/cfn--resources-stable-success.svg?style=for-the-badge)
-
-> All classes with the `Cfn` prefix in this module ([CFN Resources]) are always stable and safe to use.
->
-> [CFN Resources]: https://docs.aws.amazon.com/cdk/latest/guide/constructs.html#constructs_lib
-
 ![cdk-constructs: Experimental](https://img.shields.io/badge/cdk--constructs-experimental-important.svg?style=for-the-badge)
 
 > The APIs of higher level constructs in this module are experimental and under active development.
@@ -74,6 +68,22 @@ const spotEnvironment = new batch.ComputeEnvironment(this, 'MySpotEnvironment', 
 });
 ```
 
+### Compute Environments and Security Groups
+
+Compute Environments implement the `IConnectable` interface, which means you can use
+connections on other CDK resources to manipulate the security groups and allow access.
+
+For example, allowing a Compute Environment to access an EFS filesystem:
+
+```ts
+import * as efs from 'aws-cdk-lib/aws-efs';
+
+declare const fileSystem: efs.FileSystem;
+declare const computeEnvironment: batch.ComputeEnvironment;
+
+fileSystem.connections.allowDefaultPortFrom(computeEnvironment);
+```
+
 ### Fargate Compute Environment
 
 It is possible to have AWS Batch submit jobs to be run on Fargate compute resources. Below is an example of how this can be done:
@@ -119,8 +129,7 @@ The alternative would be to use the `BEST_FIT_PROGRESSIVE` strategy in order for
 
 Simply define your Launch Template:
 
-```text
-// This example is only available in TypeScript
+```ts
 const myLaunchTemplate = new ec2.CfnLaunchTemplate(this, 'LaunchTemplate', {
   launchTemplateName: 'extra-storage-template',
   launchTemplateData: {
@@ -138,7 +147,7 @@ const myLaunchTemplate = new ec2.CfnLaunchTemplate(this, 'LaunchTemplate', {
 });
 ```
 
-and use it:
+And provide `launchTemplateName`:
 
 ```ts
 declare const vpc: ec2.Vpc;
@@ -152,6 +161,60 @@ const myComputeEnv = new batch.ComputeEnvironment(this, 'ComputeEnv', {
     vpc,
   },
   computeEnvironmentName: 'MyStorageCapableComputeEnvironment',
+});
+```
+
+Or provide `launchTemplateId` instead:
+
+```ts
+declare const vpc: ec2.Vpc;
+declare const myLaunchTemplate: ec2.CfnLaunchTemplate;
+
+const myComputeEnv = new batch.ComputeEnvironment(this, 'ComputeEnv', {
+  computeResources: {
+    launchTemplate: {
+      launchTemplateId: myLaunchTemplate.ref as string,
+    },
+    vpc,
+  },
+  computeEnvironmentName: 'MyStorageCapableComputeEnvironment',
+});
+```
+
+Note that if your launch template explicitly specifies network interfaces,
+for example to use an Elastic Fabric Adapter, you must use those security groups rather
+than allow the `ComputeEnvironment` to define them.  This is done by setting
+`useNetworkInterfaceSecurityGroups` in the launch template property of the environment.
+For example:
+
+```ts
+declare const vpc: ec2.Vpc;
+
+const efaSecurityGroup = new ec2.SecurityGroup(this, 'EFASecurityGroup', {
+  vpc,
+});
+
+const launchTemplateEFA = new ec2.CfnLaunchTemplate(this, 'LaunchTemplate', {
+  launchTemplateName: 'LaunchTemplateName',
+  launchTemplateData: {
+    networkInterfaces: [{
+      deviceIndex: 0,
+      subnetId: vpc.privateSubnets[0].subnetId,
+      interfaceType: 'efa',
+      groups: [efaSecurityGroup.securityGroupId],
+    }],
+  },
+});
+
+const computeEnvironmentEFA = new batch.ComputeEnvironment(this, 'EFAComputeEnv', {
+  managed: true,
+  computeResources: {
+    vpc,
+    launchTemplate: {
+      launchTemplateName: launchTemplateEFA.launchTemplateName as string,
+      useNetworkInterfaceSecurityGroups: true,
+    },
+  },
 });
 ```
 
@@ -255,7 +318,7 @@ const jobQueue = batch.JobQueue.fromJobQueueArn(this, 'imported-job-queue', 'arn
 A Batch Job definition helps AWS Batch understand important details about how to run your application in the scope of a Batch Job. This involves key information like resource requirements, what containers to run, how the compute environment should be prepared, and more. Below is a simple example of how to create a job definition:
 
 ```ts
-import * as ecr from '@aws-cdk/aws-ecr';
+import * as ecr from 'aws-cdk-lib/aws-ecr';
 
 const repo = ecr.Repository.fromRepositoryName(this, 'batch-job-repo', 'todo-list');
 
@@ -284,7 +347,7 @@ new batch.JobDefinition(this, 'batch-job-def-from-local', {
 You can provide custom log driver and its configuration for the container.
 
 ```ts
-import * as ssm from '@aws-cdk/aws-ssm';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
 
 new batch.JobDefinition(this, 'job-def', {
   container: {
@@ -299,6 +362,25 @@ new batch.JobDefinition(this, 'job-def', {
   },
 });
 ```
+
+### Using the secret on secrets manager
+
+You can set the environment variables from secrets manager.
+
+```ts
+const dbSecret = new secretsmanager.Secret(this, 'secret');
+
+new batch.JobDefinition(this, 'batch-job-def-secrets', {
+  container: {
+    image: ecs.EcrImage.fromRegistry('docker/whalesay'),
+    secrets: {
+      PASSWORD: ecs.Secret.fromSecretsManager(dbSecret, 'password'),
+    },
+  },
+});
+```
+
+It is common practice to invoke other AWS services from within AWS Batch jobs (e.g. using the AWS SDK). For this reason, the AWS_ACCOUNT and AWS_REGION environments are always provided by default to the JobDefinition construct with the values inferred from the current context. You can always overwrite them by setting these environment variables explicitly though.
 
 ### Importing an existing Job Definition
 

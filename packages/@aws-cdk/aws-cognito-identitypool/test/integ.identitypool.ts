@@ -3,17 +3,18 @@ import {
   UserPoolIdentityProviderGoogle,
   UserPoolIdentityProviderAmazon,
   ProviderAttribute,
-} from '@aws-cdk/aws-cognito';
+} from 'aws-cdk-lib/aws-cognito';
 import {
   Effect,
   PolicyStatement,
-} from '@aws-cdk/aws-iam';
+} from 'aws-cdk-lib/aws-iam';
 import {
   App,
   Stack,
-} from '@aws-cdk/core';
+} from 'aws-cdk-lib';
 import {
   IdentityPool,
+  IdentityPoolProviderUrl,
 } from '../lib/identitypool';
 import {
   UserPoolAuthenticationProvider,
@@ -50,12 +51,21 @@ new UserPoolIdentityProviderAmazon(stack, 'OtherPoolProviderAmazon', {
     },
   },
 });
+const client = userPool.addClient('testClient');
+const provider = new UserPoolAuthenticationProvider({ userPool, userPoolClient: client });
 const idPool = new IdentityPool(stack, 'identitypool', {
   authenticationProviders: {
-    userPools: [new UserPoolAuthenticationProvider({ userPool })],
+    userPools: [provider],
     amazon: { appId: 'amzn1.application.12312k3j234j13rjiwuenf' },
     google: { clientId: '12345678012.apps.googleusercontent.com' },
   },
+  roleMappings: [
+    {
+      mappingKey: 'theKey',
+      providerUrl: IdentityPoolProviderUrl.userPool(`${userPool.userPoolProviderName}:${client.userPoolClientId}`),
+      useToken: true,
+    },
+  ],
   allowClassicFlow: true,
   identityPoolName: 'my-id-pool',
 });

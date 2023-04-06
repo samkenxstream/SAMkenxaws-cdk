@@ -1,7 +1,7 @@
-import * as ec2 from '@aws-cdk/aws-ec2';
-import { IResource, RemovalPolicy, Resource } from '@aws-cdk/core';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import { IResource, RemovalPolicy, Resource } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { CfnClusterSubnetGroup } from './redshift.generated';
+import { CfnClusterSubnetGroup } from 'aws-cdk-lib/aws-redshift';
 
 /**
  * Interface for a cluster subnet group.
@@ -65,7 +65,7 @@ export class ClusterSubnetGroup extends Resource implements IClusterSubnetGroup 
   constructor(scope: Construct, id: string, props: ClusterSubnetGroupProps) {
     super(scope, id);
 
-    const { subnetIds } = props.vpc.selectSubnets(props.vpcSubnets ?? { subnetType: ec2.SubnetType.PRIVATE });
+    const { subnetIds } = props.vpc.selectSubnets(props.vpcSubnets ?? { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS });
 
     const subnetGroup = new CfnClusterSubnetGroup(this, 'Default', {
       description: props.description,

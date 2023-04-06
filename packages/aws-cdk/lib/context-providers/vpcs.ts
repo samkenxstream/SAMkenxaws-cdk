@@ -113,29 +113,32 @@ export class VpcNetworkContextProviderPlugin implements ContextProviderPlugin {
     }
 
     // Find attached+available VPN gateway for this VPC
-    const vpnGatewayResponse = await ec2.describeVpnGateways({
-      Filters: [
-        {
-          Name: 'attachment.vpc-id',
-          Values: [vpcId],
-        },
-        {
-          Name: 'attachment.state',
-          Values: ['attached'],
-        },
-        {
-          Name: 'state',
-          Values: ['available'],
-        },
-      ],
-    }).promise();
-    const vpnGatewayId = vpnGatewayResponse.VpnGateways && vpnGatewayResponse.VpnGateways.length === 1
+    const vpnGatewayResponse = (args.returnVpnGateways ?? true)
+      ? await ec2.describeVpnGateways({
+        Filters: [
+          {
+            Name: 'attachment.vpc-id',
+            Values: [vpcId],
+          },
+          {
+            Name: 'attachment.state',
+            Values: ['attached'],
+          },
+          {
+            Name: 'state',
+            Values: ['available'],
+          },
+        ],
+      }).promise()
+      : undefined;
+    const vpnGatewayId = vpnGatewayResponse?.VpnGateways?.length === 1
       ? vpnGatewayResponse.VpnGateways[0].VpnGatewayId
       : undefined;
 
     return {
       vpcId,
       vpcCidrBlock: vpc.CidrBlock!,
+      ownerAccountId: vpc.OwnerId,
       availabilityZones: grouped.azs,
       isolatedSubnetIds: collapse(flatMap(findGroups(SubnetType.Isolated, grouped), group => group.subnets.map(s => s.subnetId))),
       isolatedSubnetNames: collapse(flatMap(findGroups(SubnetType.Isolated, grouped), group => group.name ? [group.name] : [])),

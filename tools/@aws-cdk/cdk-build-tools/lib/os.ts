@@ -57,6 +57,16 @@ export async function shell(command: string[], options: ShellOptions = {}): Prom
 }
 
 /**
+ * Escape a shell argument for the current shell
+ */
+export function escape(x: string) {
+  if (process.platform === 'win32') {
+    return windowsEscape(x);
+  }
+  return posixEscape(x);
+}
+
+/**
  * Render the given command line as a string
  *
  * Probably missing some cases but giving it a good effort.
@@ -133,7 +143,7 @@ async function makeShellScriptExecutable(script: string) {
     if (await canExecute(script)) { return; }
     if (!await isShellScript(script)) { return; }
     await util.promisify(fs.chmod)(script, 0o755);
-  } catch (e) {
+  } catch (e: any) {
     // If it happens that this file doesn't exist, that's fine. It's
     // probably a file that can be found on the $PATH.
     if (e.code === 'ENOENT') { return; }
@@ -145,7 +155,7 @@ async function canExecute(fileName: string): Promise<boolean> {
   try {
     await util.promisify(fs.access)(fileName, fs.constants.X_OK);
     return true;
-  } catch (e) {
+  } catch (e: any) {
     if (e.code === 'EACCES') { return false; }
     throw e;
   }

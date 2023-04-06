@@ -1,11 +1,11 @@
-import * as iam from '@aws-cdk/aws-iam';
-import * as firehose from '@aws-cdk/aws-kinesisfirehose';
-import { CfnDeliveryStream } from '@aws-cdk/aws-kinesisfirehose';
-import * as kms from '@aws-cdk/aws-kms';
-import * as logs from '@aws-cdk/aws-logs';
-import * as s3 from '@aws-cdk/aws-s3';
-import * as cdk from '@aws-cdk/core';
-import { Construct, Node } from 'constructs';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as firehose from '@aws-cdk/aws-kinesisfirehose-alpha';
+import { CfnDeliveryStream } from 'aws-cdk-lib/aws-kinesisfirehose';
+import * as kms from 'aws-cdk-lib/aws-kms';
+import * as logs from 'aws-cdk-lib/aws-logs';
+import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as cdk from 'aws-cdk-lib';
+import { Construct, IDependable, Node } from 'constructs';
 import { DestinationS3BackupProps } from '../common';
 
 export interface DestinationLoggingProps {
@@ -42,7 +42,7 @@ interface ConfigWithDependables {
   /**
    * Resources that were created by the sub-config creator that must be deployed before the delivery stream is deployed.
    */
-  readonly dependables: cdk.IDependable[];
+  readonly dependables: IDependable[];
 }
 
 export interface DestinationLoggingConfig extends ConfigWithDependables {

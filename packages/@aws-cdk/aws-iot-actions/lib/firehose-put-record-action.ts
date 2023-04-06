@@ -1,6 +1,6 @@
-import * as iam from '@aws-cdk/aws-iam';
-import * as iot from '@aws-cdk/aws-iot';
-import * as firehose from '@aws-cdk/aws-kinesisfirehose';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as iot from '@aws-cdk/aws-iot-alpha';
+import * as firehose from '@aws-cdk/aws-kinesisfirehose-alpha';
 import { CommonActionProps } from './common-action-props';
 import { singletonActionRole } from './private/role';
 
@@ -70,7 +70,10 @@ export class FirehosePutRecordAction implements iot.IAction {
     this.role = props.role;
   }
 
-  bind(rule: iot.ITopicRule): iot.ActionConfig {
+  /**
+   * @internal
+   */
+  public _bind(rule: iot.ITopicRule): iot.ActionConfig {
     const role = this.role ?? singletonActionRole(rule);
     this.stream.grantPutRecords(role);
 

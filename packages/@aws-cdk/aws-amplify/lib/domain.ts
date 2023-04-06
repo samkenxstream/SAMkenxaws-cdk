@@ -1,7 +1,7 @@
-import * as iam from '@aws-cdk/aws-iam';
-import { Lazy, Resource, IResolvable } from '@aws-cdk/core';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import { Lazy, Resource, IResolvable } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { CfnDomain } from './amplify.generated';
+import { CfnDomain } from 'aws-cdk-lib/aws-amplify';
 import { IApp } from './app';
 import { IBranch } from './branch';
 
@@ -140,6 +140,8 @@ export class Domain extends Resource {
     this.domainAutoSubDomainCreationPatterns = domain.attrAutoSubDomainCreationPatterns;
     this.domainAutoSubDomainIamRole = domain.attrAutoSubDomainIamRole;
     this.domainEnableAutoSubDomain = domain.attrEnableAutoSubDomain;
+
+    this.node.addValidation({ validate: () => this.validateDomain() });
   }
 
   /**
@@ -160,7 +162,7 @@ export class Domain extends Resource {
     return this.mapSubDomain(branch, '');
   }
 
-  protected validate() {
+  private validateDomain() {
     if (this.subDomains.length === 0) {
       return ['The domain doesn\'t contain any subdomains'];
     }

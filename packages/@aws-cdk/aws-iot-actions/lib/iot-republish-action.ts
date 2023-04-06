@@ -1,5 +1,5 @@
-import * as iam from '@aws-cdk/aws-iam';
-import * as iot from '@aws-cdk/aws-iot';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as iot from '@aws-cdk/aws-iot-alpha';
 import { CommonActionProps } from './common-action-props';
 import { singletonActionRole } from './private/role';
 
@@ -52,7 +52,10 @@ export class IotRepublishMqttAction implements iot.IAction {
     this.role = props.role;
   }
 
-  bind(rule: iot.ITopicRule): iot.ActionConfig {
+  /**
+   * @internal
+   */
+  public _bind(rule: iot.ITopicRule): iot.ActionConfig {
     const role = this.role ?? singletonActionRole(rule);
     role.addToPrincipalPolicy(new iam.PolicyStatement({
       actions: ['iot:Publish'],

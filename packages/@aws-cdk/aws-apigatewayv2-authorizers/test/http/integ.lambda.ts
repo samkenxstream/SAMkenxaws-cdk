@@ -1,8 +1,8 @@
 import * as path from 'path';
-import { HttpApi, HttpMethod } from '@aws-cdk/aws-apigatewayv2';
-import { HttpLambdaIntegration } from '@aws-cdk/aws-apigatewayv2-integrations';
-import * as lambda from '@aws-cdk/aws-lambda';
-import { App, Stack, CfnOutput } from '@aws-cdk/core';
+import { HttpApi, HttpMethod } from '@aws-cdk/aws-apigatewayv2-alpha';
+import { HttpLambdaIntegration } from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { App, Stack, CfnOutput } from 'aws-cdk-lib';
 import { HttpLambdaAuthorizer, HttpLambdaResponseType } from '../../lib';
 
 /*
@@ -31,7 +31,7 @@ const authorizer = new HttpLambdaAuthorizer('LambdaAuthorizer', authHandler, {
 });
 
 const handler = new lambda.Function(stack, 'lambda', {
-  runtime: lambda.Runtime.NODEJS_12_X,
+  runtime: lambda.Runtime.NODEJS_14_X,
   handler: 'index.handler',
   code: lambda.AssetCode.fromAsset(path.join(__dirname, '../integ.lambda.handler')),
 });

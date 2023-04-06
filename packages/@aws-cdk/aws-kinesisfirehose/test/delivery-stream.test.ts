@@ -1,10 +1,10 @@
-import { Match, Template } from '@aws-cdk/assertions';
-import * as cloudwatch from '@aws-cdk/aws-cloudwatch';
-import * as ec2 from '@aws-cdk/aws-ec2';
-import * as iam from '@aws-cdk/aws-iam';
-import * as kinesis from '@aws-cdk/aws-kinesis';
-import * as kms from '@aws-cdk/aws-kms';
-import * as cdk from '@aws-cdk/core';
+import { Match, Template } from 'aws-cdk-lib/assertions';
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as kinesis from 'aws-cdk-lib/aws-kinesis';
+import * as kms from 'aws-cdk-lib/aws-kms';
+import * as cdk from 'aws-cdk-lib';
 import { Construct, Node } from 'constructs';
 import * as firehose from '../lib';
 
@@ -24,7 +24,7 @@ describe('delivery stream', () => {
     });
     mockS3Destination = {
       bind(scope: Construct, _options: firehose.DestinationBindOptions): firehose.DestinationConfig {
-        dependable = new class extends cdk.Construct {
+        dependable = new class extends Construct {
           constructor(depScope: Construct, id: string) {
             super(depScope, id);
             new cdk.CfnResource(this, 'Resource', { type: 'CDK::Dummy' });

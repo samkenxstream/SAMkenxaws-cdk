@@ -1,6 +1,6 @@
-import * as codecommit from '@aws-cdk/aws-codecommit';
-import * as ec2 from '@aws-cdk/aws-ec2';
-import * as cdk from '@aws-cdk/core';
+import * as codecommit from 'aws-cdk-lib/aws-codecommit';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as cdk from 'aws-cdk-lib';
 import * as constructs from 'constructs';
 import * as cloud9 from '../lib';
 
@@ -25,6 +25,7 @@ export class Cloud9Env extends cdk.Stack {
       clonedRepositories: [
         cloud9.CloneRepository.fromCodeCommit(repo, '/foo'),
       ],
+      imageId: cloud9.ImageId.AMAZON_LINUX_2,
     });
     new cdk.CfnOutput(this, 'URL', { value: c9env.ideUrl });
     new cdk.CfnOutput(this, 'ARN', { value: c9env.ec2EnvironmentArn });

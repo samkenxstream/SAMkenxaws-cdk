@@ -2,7 +2,7 @@ import { Construct } from 'constructs';
 import { IAction, ActionBindOptions } from './action';
 import { Event } from './event';
 import { Expression } from './expression';
-import { CfnDetectorModel } from './iotevents.generated';
+import { CfnDetectorModel } from 'aws-cdk-lib/aws-iotevents';
 
 /**
  * Properties for options of state transition.
@@ -182,7 +182,7 @@ function toEventsJson(
   return events?.map(event => ({
     eventName: event.eventName,
     condition: event.condition?.evaluate(),
-    actions: event.actions?.map(action => action.bind(scope, actionBindOptions).configuration),
+    actions: event.actions?.map(action => action._bind(scope, actionBindOptions).configuration),
   }));
 }
 
@@ -198,7 +198,7 @@ function toTransitionEventsJson(
   return transitionEvents.map(transitionEvent => ({
     eventName: transitionEvent.eventName,
     condition: transitionEvent.condition.evaluate(),
-    actions: transitionEvent.actions?.map(action => action.bind(scope, actionBindOptions).configuration),
+    actions: transitionEvent.actions?.map(action => action._bind(scope, actionBindOptions).configuration),
     nextState: transitionEvent.nextState.stateName,
   }));
 }

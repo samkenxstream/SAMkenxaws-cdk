@@ -1,8 +1,8 @@
-import { Template } from '@aws-cdk/assertions';
-import { WebSocketApi } from '@aws-cdk/aws-apigatewayv2';
-import { WebSocketLambdaIntegration } from '@aws-cdk/aws-apigatewayv2-integrations';
-import { Code, Function, Runtime } from '@aws-cdk/aws-lambda';
-import { Stack } from '@aws-cdk/core';
+import { Template } from 'aws-cdk-lib/assertions';
+import { WebSocketApi } from '@aws-cdk/aws-apigatewayv2-alpha';
+import { WebSocketLambdaIntegration } from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
+import { Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Stack } from 'aws-cdk-lib';
 import { WebSocketLambdaAuthorizer } from '../../lib';
 
 describe('WebSocketLambdaAuthorizer', () => {
@@ -11,7 +11,7 @@ describe('WebSocketLambdaAuthorizer', () => {
     const stack = new Stack();
 
     const handler = new Function(stack, 'auth-function', {
-      runtime: Runtime.NODEJS_12_X,
+      runtime: Runtime.NODEJS_14_X,
       code: Code.fromInline('exports.handler = () => {return true}'),
       handler: 'index.handler',
     });

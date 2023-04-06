@@ -1,11 +1,11 @@
-import { Match, Template } from '@aws-cdk/assertions';
-import * as iam from '@aws-cdk/aws-iam';
-import * as firehose from '@aws-cdk/aws-kinesisfirehose';
-import * as kms from '@aws-cdk/aws-kms';
-import * as lambda from '@aws-cdk/aws-lambda';
-import * as logs from '@aws-cdk/aws-logs';
-import * as s3 from '@aws-cdk/aws-s3';
-import * as cdk from '@aws-cdk/core';
+import { Match, Template } from 'aws-cdk-lib/assertions';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as firehose from '@aws-cdk/aws-kinesisfirehose-alpha';
+import * as kms from 'aws-cdk-lib/aws-kms';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as logs from 'aws-cdk-lib/aws-logs';
+import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as cdk from 'aws-cdk-lib';
 import * as firehosedestinations from '../lib';
 
 describe('S3 destination', () => {
@@ -87,7 +87,11 @@ describe('S3 destination', () => {
               's3:GetBucket*',
               's3:List*',
               's3:DeleteObject*',
-              's3:PutObject*',
+              's3:PutObject',
+              's3:PutObjectLegalHold',
+              's3:PutObjectRetention',
+              's3:PutObjectTagging',
+              's3:PutObjectVersionTagging',
               's3:Abort*',
             ],
             Effect: 'Allow',
@@ -119,7 +123,11 @@ describe('S3 destination', () => {
               's3:GetBucket*',
               's3:List*',
               's3:DeleteObject*',
-              's3:PutObject*',
+              's3:PutObject',
+              's3:PutObjectLegalHold',
+              's3:PutObjectRetention',
+              's3:PutObjectTagging',
+              's3:PutObjectVersionTagging',
               's3:Abort*',
             ],
             Effect: 'Allow',
@@ -232,7 +240,7 @@ describe('S3 destination', () => {
 
     beforeEach(() => {
       lambdaFunction = new lambda.Function(stack, 'DataProcessorFunction', {
-        runtime: lambda.Runtime.NODEJS_12_X,
+        runtime: lambda.Runtime.NODEJS_14_X,
         code: lambda.Code.fromInline('foo'),
         handler: 'bar',
       });

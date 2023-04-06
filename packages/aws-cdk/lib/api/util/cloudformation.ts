@@ -1,8 +1,8 @@
 import { SSMPARAM_NO_INVALIDATE } from '@aws-cdk/cx-api';
 import { CloudFormation } from 'aws-sdk';
+import { StackStatus } from './cloudformation/stack-status';
 import { debug } from '../../logging';
 import { deserializeStructure } from '../../serialize';
-import { StackStatus } from './cloudformation/stack-status';
 
 export type Template = {
   Parameters?: Record<string, TemplateParameter>;
@@ -27,11 +27,13 @@ export type ResourcesToImport = CloudFormation.ResourcesToImport;
  * repeated calls to CloudFormation).
  */
 export class CloudFormationStack {
-  public static async lookup(cfn: CloudFormation, stackName: string): Promise<CloudFormationStack> {
+  public static async lookup(
+    cfn: CloudFormation, stackName: string, retrieveProcessedTemplate: boolean = false,
+  ): Promise<CloudFormationStack> {
     try {
       const response = await cfn.describeStacks({ StackName: stackName }).promise();
-      return new CloudFormationStack(cfn, stackName, response.Stacks && response.Stacks[0]);
-    } catch (e) {
+      return new CloudFormationStack(cfn, stackName, response.Stacks && response.Stacks[0], retrieveProcessedTemplate);
+    } catch (e: any) {
       if (e.code === 'ValidationError' && e.message === `Stack with id ${stackName} does not exist`) {
         return new CloudFormationStack(cfn, stackName, undefined);
       }
@@ -57,7 +59,10 @@ export class CloudFormationStack {
 
   private _template: any;
 
-  protected constructor(private readonly cfn: CloudFormation, public readonly stackName: string, private readonly stack?: CloudFormation.Stack) {
+  protected constructor(
+    private readonly cfn: CloudFormation, public readonly stackName: string, private readonly stack?: CloudFormation.Stack,
+    private readonly retrieveProcessedTemplate: boolean = false,
+  ) {
   }
 
   /**
@@ -72,7 +77,10 @@ export class CloudFormationStack {
     }
 
     if (this._template === undefined) {
-      const response = await this.cfn.getTemplate({ StackName: this.stackName, TemplateStage: 'Original' }).promise();
+      const response = await this.cfn.getTemplate({
+        StackName: this.stackName,
+        TemplateStage: this.retrieveProcessedTemplate ? 'Processed' : 'Original',
+      }).promise();
       this._template = (response.TemplateBody && deserializeStructure(response.TemplateBody)) || {};
     }
     return this._template;
@@ -363,6 +371,14 @@ export async function stabilizeStack(cfn: CloudFormation, stackName: string) {
     if (status.isInProgress) {
       debug('Stack %s has an ongoing operation in progress and is not stable (%s)', stackName, status);
       return undefined;
+    } else if (status.isReviewInProgress) {
+      // This may happen if a stack creation operation is interrupted before the ChangeSet execution starts. Recovering
+      // from this would requiring manual intervention (deleting or executing the pending ChangeSet), and failing to do
+      // so will result in an endless wait here (the ChangeSet wont delete or execute itself). Instead of blocking
+      // "forever" we proceed as if the stack was existing and stable. If there is a concurrent operation that just
+      // hasn't finished proceeding just yet, either this operation or the concurrent one may fail due to the other one
+      // having made progress. Which is fine. I guess.
+      debug('Stack %s is in REVIEW_IN_PROGRESS state. Considering this is a stable status (%s)', stackName, status);
     }
 
     return stack;

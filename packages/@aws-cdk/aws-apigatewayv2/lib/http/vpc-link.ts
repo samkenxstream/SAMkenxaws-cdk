@@ -1,7 +1,7 @@
-import * as ec2 from '@aws-cdk/aws-ec2';
-import { IResource, Lazy, Names, Resource } from '@aws-cdk/core';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import { IResource, Lazy, Names, Resource } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { CfnVpcLink } from '../apigatewayv2.generated';
+import { CfnVpcLink } from 'aws-cdk-lib/aws-apigatewayv2';
 
 /**
  * Represents an API Gateway VpcLink
@@ -99,7 +99,7 @@ export class VpcLink extends Resource implements IVpcLink {
 
     this.vpcLinkId = cfnResource.ref;
 
-    const { subnets } = props.vpc.selectSubnets(props.subnets ?? { subnetType: ec2.SubnetType.PRIVATE });
+    const { subnets } = props.vpc.selectSubnets(props.subnets ?? { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS });
     this.addSubnets(...subnets);
 
     if (props.securityGroups) {

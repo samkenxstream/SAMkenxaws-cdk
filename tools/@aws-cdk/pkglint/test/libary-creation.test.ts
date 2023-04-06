@@ -18,6 +18,7 @@ describe('createModuleDefinitionFromCfnNamespace', () => {
       javaArtifactId: 'ec2',
       pythonDistName: 'aws-cdk.aws-ec2',
       pythonModuleName: 'aws_cdk.aws_ec2',
+      submoduleName: 'aws_ec2',
     });
   });
 
@@ -36,6 +37,7 @@ describe('createModuleDefinitionFromCfnNamespace', () => {
       javaArtifactId: 'sam',
       pythonDistName: 'aws-cdk.aws-sam',
       pythonModuleName: 'aws_cdk.aws_sam',
+      submoduleName: 'aws_sam',
     });
   });
 
@@ -54,13 +56,27 @@ describe('createModuleDefinitionFromCfnNamespace', () => {
       javaArtifactId: 'alexa-ask',
       pythonDistName: 'aws-cdk.alexa-ask',
       pythonModuleName: 'aws_cdk.alexa_ask',
+      submoduleName: 'alexa_ask',
     });
   });
 });
 
 describe('createLibraryReadme', () => {
+  let tempDir: string | undefined;
+
+  beforeEach(() => {
+    tempDir = undefined;
+  });
+
+  afterEach(async () => {
+    if (tempDir) {
+      await fs.emptyDir(tempDir);
+      await fs.rmdir(tempDir);
+    }
+  });
+
   test('library name is valid', async () => {
-    const tempDir = fs.mkdtempSync(path.join(__dirname, 'temp'));
+    tempDir = fs.mkdtempSync(path.join(__dirname, 'temp'));
     const readmePath = path.join(tempDir, 'README.md');
     await createLibraryReadme('Alexa::ASK', readmePath);
 

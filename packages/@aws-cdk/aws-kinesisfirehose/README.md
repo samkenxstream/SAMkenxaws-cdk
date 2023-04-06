@@ -3,12 +3,6 @@
 
 ---
 
-![cfn-resources: Stable](https://img.shields.io/badge/cfn--resources-stable-success.svg?style=for-the-badge)
-
-> All classes with the `Cfn` prefix in this module ([CFN Resources]) are always stable and safe to use.
->
-> [CFN Resources]: https://docs.aws.amazon.com/cdk/latest/guide/constructs.html#constructs_lib
-
 ![cdk-constructs: Experimental](https://img.shields.io/badge/cdk--constructs-experimental-important.svg?style=for-the-badge)
 
 > The APIs of higher level constructs in this module are experimental and under active development.
@@ -28,7 +22,7 @@ endpoint or third-party services such as Datadog, Dynatrace, LogicMonitor, Mongo
 Relic, and Sumo Logic.
 
 Kinesis Data Firehose delivery streams are distinguished from Kinesis data streams in
-their models of consumtpion. Whereas consumers read from a data stream by actively pulling
+their models of consumption. Whereas consumers read from a data stream by actively pulling
 data from the stream, a delivery stream pushes data to its destination on a regular
 cadence. This means that data streams are intended to have consumers that do on-demand
 processing, like AWS Lambda or Amazon EC2. On the other hand, delivery streams are
@@ -190,7 +184,7 @@ You can provide a specific log group to specify where the CDK will create the lo
 where log events will be sent:
 
 ```ts
-import * as logs from '@aws-cdk/aws-logs';
+import * as logs from 'aws-cdk-lib/aws-logs';
 
 const logGroup = new logs.LogGroup(this, 'Log Group');
 declare const bucket: s3.Bucket;
@@ -237,7 +231,7 @@ metric configurations for any metric provided by Kinesis Data Firehose; the conf
 are pre-populated with the correct dimensions for the delivery stream.
 
 ```ts
-import * as cloudwatch from '@aws-cdk/aws-cloudwatch';
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 declare const deliveryStream: firehose.DeliveryStream;
 
 // Alarm that triggers when the per-second average of incoming bytes exceeds 90% of the current service limit
@@ -402,7 +396,7 @@ times by default, but can be configured using `retries` in the processor configu
 // Provide a Lambda function that will transform records before delivery, with custom
 // buffering and retry configuration
 const lambdaFunction = new lambda.Function(this, 'Processor', {
-  runtime: lambda.Runtime.NODEJS_12_X,
+  runtime: lambda.Runtime.NODEJS_14_X,
   handler: 'index.handler',
   code: lambda.Code.fromAsset(path.join(__dirname, 'process-records')),
 });

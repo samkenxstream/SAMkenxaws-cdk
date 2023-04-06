@@ -1,4 +1,4 @@
-import { CfnTopicRule } from './iot.generated';
+import { CfnTopicRule } from 'aws-cdk-lib/aws-iot';
 import { ITopicRule } from './topic-rule';
 
 /**
@@ -9,8 +9,9 @@ export interface IAction {
    * Returns the topic rule action specification.
    *
    * @param topicRule The TopicRule that would trigger this action.
+   * @internal
    */
-  bind(topicRule: ITopicRule): ActionConfig;
+  _bind(topicRule: ITopicRule): ActionConfig;
 }
 
 /**

@@ -1,6 +1,6 @@
-import * as iam from '@aws-cdk/aws-iam';
-import * as iot from '@aws-cdk/aws-iot';
-import * as s3 from '@aws-cdk/aws-s3';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as iot from '@aws-cdk/aws-iot-alpha';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import { kebab as toKebabCase } from 'case';
 import { CommonActionProps } from './common-action-props';
 import { singletonActionRole } from './private/role';
@@ -46,7 +46,10 @@ export class S3PutObjectAction implements iot.IAction {
     this.role = props.role;
   }
 
-  bind(rule: iot.ITopicRule): iot.ActionConfig {
+  /**
+   * @internal
+   */
+  public _bind(rule: iot.ITopicRule): iot.ActionConfig {
     const role = this.role ?? singletonActionRole(rule);
     role.addToPrincipalPolicy(new iam.PolicyStatement({
       actions: ['s3:PutObject'],

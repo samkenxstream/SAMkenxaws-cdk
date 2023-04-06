@@ -1,6 +1,5 @@
-import * as cdk from '@aws-cdk/core';
-import { Construct } from 'constructs';
-import { CfnDeliveryStream } from './kinesisfirehose.generated';
+import { Construct, IDependable } from 'constructs';
+import { CfnDeliveryStream } from 'aws-cdk-lib/aws-kinesisfirehose';
 
 /**
  * A Kinesis Data Firehose delivery stream destination configuration.
@@ -18,7 +17,7 @@ export interface DestinationConfig {
    *
    * @default []
    */
-  readonly dependables?: cdk.IDependable[];
+  readonly dependables?: IDependable[];
 }
 
 /**

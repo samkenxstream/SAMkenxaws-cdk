@@ -1,19 +1,27 @@
 import * as path from 'path';
-import { Duration, CfnResource, AssetStaging, Stack, FileAssetPackaging, Token, Lazy, Reference } from '@aws-cdk/core';
+import { Duration, CfnResource, AssetStaging, Stack, FileAssetPackaging, Token, Lazy, Reference } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
-// keep this import separate from other imports to reduce chance for merge conflicts with v2-main
-// eslint-disable-next-line no-duplicate-imports, import/order
-import { Construct as CoreConstruct } from '@aws-cdk/core';
 let SDK_METADATA: any = undefined;
 
+/**
+ * Properties for a lambda function provider
+ */
+export interface LambdaFunctionProviderProps {
+  /**
+   * The handler to use for the lambda function
+   *
+   * @default index.handler
+   */
+  readonly handler?: string;
+}
 
 /**
  * integ-tests can only depend on '@aws-cdk/core' so
  * this construct creates a lambda function provider using
  * only CfnResource
  */
-class LambdaFunctionProvider extends CoreConstruct {
+class LambdaFunctionProvider extends Construct {
   /**
    * The ARN of the lambda function which can be used
    * as a serviceToken to a CustomResource
@@ -27,7 +35,7 @@ class LambdaFunctionProvider extends CoreConstruct {
 
   private readonly policies: any[] = [];
 
-  constructor(scope: Construct, id: string/*, props?: LambdaFunctionProviderProps*/) {
+  constructor(scope: Construct, id: string, props?: LambdaFunctionProviderProps) {
     super(scope, id);
 
     const staging = new AssetStaging(this, 'Staging', {
@@ -51,15 +59,20 @@ class LambdaFunctionProvider extends CoreConstruct {
         ManagedPolicyArns: [
           { 'Fn::Sub': 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole' },
         ],
-        Policies: [
-          {
-            PolicyName: 'Inline',
-            PolicyDocument: {
-              Version: '2012-10-17',
-              Statement: Lazy.list({ produce: () => this.policies }),
-            },
+        Policies: Lazy.any({
+          produce: () => {
+            const policies = this.policies.length > 0 ? [
+              {
+                PolicyName: 'Inline',
+                PolicyDocument: {
+                  Version: '2012-10-17',
+                  Statement: this.policies,
+                },
+              },
+            ] : undefined;
+            return policies;
           },
-        ],
+        }),
       },
     });
 
@@ -72,7 +85,7 @@ class LambdaFunctionProvider extends CoreConstruct {
           S3Key: asset.objectKey,
         },
         Timeout: Duration.minutes(2).toSeconds(),
-        Handler: 'index.handler',
+        Handler: props?.handler ?? 'index.handler',
         Role: role.getAtt('Arn'),
       },
     });
@@ -87,7 +100,7 @@ class LambdaFunctionProvider extends CoreConstruct {
 
 }
 
-interface SingletonFunctionProps {
+interface SingletonFunctionProps extends LambdaFunctionProviderProps {
   /**
    * A unique identifier to identify this lambda
    *
@@ -95,33 +108,19 @@ interface SingletonFunctionProps {
    * We recommend generating a UUID per provider.
    */
   readonly uuid: string;
-
-  /**
-   * A list of IAM policies to add to the lambdaFunction
-   * execution role
-   */
-  readonly policies: any[];
 }
 
 /**
  * Mimic the singletonfunction construct in '@aws-cdk/aws-lambda'
  */
-class SingletonFunction extends CoreConstruct {
+class SingletonFunction extends Construct {
   public readonly serviceToken: string;
 
   public readonly lambdaFunction: LambdaFunctionProvider;
-  private readonly policies: any[] = [];
   constructor(scope: Construct, id: string, props: SingletonFunctionProps) {
     super(scope, id);
     this.lambdaFunction = this.ensureFunction(props);
     this.serviceToken = this.lambdaFunction.serviceToken;
-  }
-
-  /**
-   * The policies can be added by different constructs
-   */
-  onPrepare(): void {
-    this.lambdaFunction.addPolicies(this.policies);
   }
 
   private ensureFunction(props: SingletonFunctionProps): LambdaFunctionProvider {
@@ -131,7 +130,27 @@ class SingletonFunction extends CoreConstruct {
       return existing as LambdaFunctionProvider;
     }
 
-    return new LambdaFunctionProvider(Stack.of(this), constructName);
+    return new LambdaFunctionProvider(Stack.of(this), constructName, {
+      handler: props.handler,
+    });
+  }
+
+  /**
+   * Add an IAM policy statement to the inline policy of the
+   * lambdas function's role
+   *
+   * **Please note**: this is a direct IAM JSON policy blob, *not* a `iam.PolicyStatement`
+   * object like you will see in the rest of the CDK.
+   *
+   *
+   * singleton.addToRolePolicy({
+   *   Effect: 'Allow',
+   *   Action: 's3:GetObject',
+   *   Resources: '*',
+   * });
+   */
+  public addToRolePolicy(statement: any): void {
+    this.lambdaFunction.addPolicies([statement]);
   }
 
   /**
@@ -145,13 +164,26 @@ class SingletonFunction extends CoreConstruct {
     const srv = service.toLowerCase();
     const iamService = (SDK_METADATA[srv] && SDK_METADATA[srv].prefix) || srv;
     const iamAction = api.charAt(0).toUpperCase() + api.slice(1);
-    this.policies.push({
+    this.lambdaFunction.addPolicies([{
       Action: [`${iamService}:${iamAction}`],
       Effect: 'Allow',
       Resource: resources || ['*'],
-    });
+    }]);
   }
+}
 
+/**
+ * Properties for defining an AssertionsProvider
+ */
+export interface AssertionsProviderProps extends LambdaFunctionProviderProps {
+  /**
+   * This determines the uniqueness of each AssertionsProvider.
+   * You should only need to provide something different here if you
+   * _know_ that you need a separate provider
+   *
+   * @default - the default uuid is used
+   */
+  readonly uuid?: string;
 }
 
 /**
@@ -160,7 +192,7 @@ class SingletonFunction extends CoreConstruct {
  * that serves as the custom resource provider for the various
  * assertion providers
  */
-export class AssertionsProvider extends CoreConstruct {
+export class AssertionsProvider extends Construct {
   /**
    * The ARN of the lambda function which can be used
    * as a serviceToken to a CustomResource
@@ -172,15 +204,14 @@ export class AssertionsProvider extends CoreConstruct {
    */
   public readonly handlerRoleArn: Reference;
 
-  private readonly policies: any[] = [];
   private readonly handler: SingletonFunction;
 
-  constructor(scope: Construct, id: string) {
+  constructor(scope: Construct, id: string, props?: AssertionsProviderProps) {
     super(scope, id);
 
     this.handler = new SingletonFunction(this, 'AssertionsProvider', {
-      uuid: '1488541a-7b23-4664-81b6-9b4408076b81',
-      policies: Lazy.list({ produce: () => this.policies }),
+      handler: props?.handler,
+      uuid: props?.uuid ?? '1488541a-7b23-4664-81b6-9b4408076b81',
     });
 
     this.handlerRoleArn = this.handler.lambdaFunction.roleArn;
@@ -215,6 +246,44 @@ export class AssertionsProvider extends CoreConstruct {
    */
   public addPolicyStatementFromSdkCall(service: string, api: string, resources?: string[]): void {
     this.handler.addPolicyStatementFromSdkCall(service, api, resources);
+  }
+
+  /**
+   * Add an IAM policy statement to the inline policy of the
+   * lambdas function's role
+   *
+   * **Please note**: this is a direct IAM JSON policy blob, *not* a `iam.PolicyStatement`
+   * object like you will see in the rest of the CDK.
+   *
+   *
+   * @example
+   * declare const provider: AssertionsProvider;
+   * provider.addToRolePolicy({
+   *   Effect: 'Allow',
+   *   Action: ['s3:GetObject'],
+   *   Resource: ['*'],
+   * });
+   */
+  public addToRolePolicy(statement: any): void {
+    this.handler.addToRolePolicy(statement);
+  }
+
+  /**
+   * Grant a principal access to invoke the assertion provider
+   * lambda function
+   *
+   * @param principalArn the ARN of the principal that should be given
+   *  permission to invoke the assertion provider
+   */
+  public grantInvoke(principalArn: string): void {
+    new CfnResource(this, 'Invoke', {
+      type: 'AWS::Lambda::Permission',
+      properties: {
+        Action: 'lambda:InvokeFunction',
+        FunctionName: this.serviceToken,
+        Principal: principalArn,
+      },
+    });
   }
 }
 

@@ -1,9 +1,8 @@
-import * as codebuild from '@aws-cdk/aws-codebuild';
-import * as iam from '@aws-cdk/aws-iam';
-import { IResource, Lazy, Resource, SecretValue } from '@aws-cdk/core';
+import * as codebuild from 'aws-cdk-lib/aws-codebuild';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import { IResource, Lazy, Resource, SecretValue } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import * as YAML from 'yaml';
-import { CfnApp } from './amplify.generated';
+import { CfnApp } from 'aws-cdk-lib/aws-amplify';
 import { BasicAuth } from './basic-auth';
 import { Branch, BranchOptions } from './branch';
 import { Domain, DomainOptions } from './domain';
@@ -515,11 +514,18 @@ export interface CustomResponseHeader {
 }
 
 function renderCustomResponseHeaders(customHeaders: CustomResponseHeader[]): string {
-  const modifiedHeaders = customHeaders.map(customHeader => ({
-    ...customHeader,
-    headers: Object.entries(customHeader.headers).map(([key, value]) => ({ key, value })),
-  }));
+  const yaml = [
+    'customHeaders:',
+  ];
 
-  const customHeadersObject = { customHeaders: modifiedHeaders };
-  return YAML.stringify(customHeadersObject);
+  for (const customHeader of customHeaders) {
+    yaml.push(`  - pattern: "${customHeader.pattern}"`);
+    yaml.push('    headers:');
+    for (const [key, value] of Object.entries(customHeader.headers)) {
+      yaml.push(`      - key: "${key}"`);
+      yaml.push(`        value: "${value}"`);
+    }
+  }
+
+  return `${yaml.join('\n')}\n`;
 }
